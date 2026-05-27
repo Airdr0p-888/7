@@ -993,17 +993,11 @@
    支持：MetaMask / TokenPocket
    ================================================================ */
 
-/* ─── GitHub 云端存储配置 ─── */
-// 使用说明：
-// 1. 在 GitHub 创建一个 **公开** 仓库（如 token-registry），仓库中新建 tokens.json，内容为 [] 
-// 2. 创建 Fine-grained Personal Access Token：https://github.com/settings/tokens?type=beta
-//    权限选 "Only select repositories" → 选你的仓库 → Repository permissions → Contents: Read and Write
-// 3. 把 Token、仓库名填到下面
-var GITHUB_OWNER = 'Airdr0p-888';      // ← 改成你的 GitHub 用户名
-var GITHUB_REPO  = 'token-registry';            // ← 改成仓库名
-var GITHUB_TOKEN = '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';     // ← Classic Token (repo scope)
-var GITHUB_BRANCH = 'main';                     // 分支名，一般是 main 或 master
-var GITHUB_PATH   = 'tokens.json';              // JSON 文件路径
+/* ─── Vercel API 存储配置 ─── */
+// 部署到 Vercel 后自动获得域名，本地调试用 http://localhost:3000
+var API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') 
+  ? 'http://localhost:3000' 
+  : 'https://' + location.hostname;  // 生产环境自动使用当前域名
 
 /* ─── 常量 ─── */
 const BSC_CHAIN_ID = 56;
@@ -1419,94 +1413,26 @@ function buildParamsPreview(p, vanityResult, gasBNB){
 }
 
 /* ─── 主流程 ─── */
-/* ─── GitHub 云端存储 ─── */
-async function pushTokenToGitHub(contractAddr, name, symbol, deployTxHash){
-  var deployer = currentAccount;
-  // 1. 先获取当前 tokens.json 的 sha
-  var getUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_PATH + '?ref=' + GITHUB_BRANCH;
-  var getResp = await fetch(getUrl, {
-    headers: { 'Authorization': 'Bearer ' + GITHUB_TOKEN, 'Accept': 'application/vnd.github+json' }
+/* ─── Vercel 云端存储 ─── */
+async function saveTokenToCloud(contractAddr, name, symbol, deployTxHash){
+  var payload = {
+    a: contractAddr,
+    n: name,
+    s: symbol,
+    d: currentAccount,
+    t: Math.floor(Date.now() / 1000),
+    h: deployTxHash
+  };
+  var resp = await fetch(API_BASE + '/api/tokens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
-  if(!getResp.ok){
-    // 文件不存在则当作空数组
-    if(getResp.status === 404) return await pushTokenToGitHubInit(contractAddr, name, symbol, deployTxHash);
-    throw new Error('GitHub 读取失败: ' + getResp.status);
+  if(!resp.ok){
+    var err = await resp.text();
+    throw new Error('API 错误(' + resp.status + '): ' + err.slice(0, 200));
   }
-  var fileData = await getResp.json();
-  var sha = fileData.sha;
-  var content = JSON.parse(atob(fileData.content)); // base64 解码
-  if(!Array.isArray(content)) content = [];
-
-  // 2. 追加密钥信息（避免重复）
-  var exists = content.some(function(t){ return t.a === contractAddr; });
-  if(!exists){
-    content.push({
-      a: contractAddr,        // address
-      n: name,                // name
-      s: symbol,              // symbol
-      d: deployer,            // deployer
-      t: Math.floor(Date.now() / 1000),  // timestamp
-      h: deployTxHash         // tx hash
-    });
-  }
-
-  // 3. PUT 回 GitHub
-  var newContent = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
-  var putResp = await fetch(getUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'Bearer ' + GITHUB_TOKEN,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: 'Add token ' + symbol + ' (' + contractAddr.slice(0,10) + '...)',
-      content: newContent,
-      sha: sha,
-      branch: GITHUB_BRANCH
-    })
-  });
-
-  if(!putResp.ok){
-    if(putResp.status === 409){
-      // 冲突重试（别人同时写了）
-      console.warn('GitHub 写入冲突，1秒后重试...');
-      await new Promise(function(r){ setTimeout(r, 1000); });
-      return await pushTokenToGitHub(contractAddr, name, symbol, deployTxHash);
-    }
-    var errBody = await putResp.text();
-    throw new Error('GitHub 写入失败(' + putResp.status + '): ' + errBody.slice(0, 200));
-  }
-  console.log('✅ 已同步到 GitHub:', symbol, contractAddr);
-}
-
-async function pushTokenToGitHubInit(contractAddr, name, symbol, deployTxHash){
-  // 文件不存在，创建新文件
-  var deployer = currentAccount;
-  var content = [{
-    a: contractAddr, n: name, s: symbol, d: deployer,
-    t: Math.floor(Date.now() / 1000), h: deployTxHash
-  }];
-  var newContent = btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2))));
-  var putUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_PATH;
-  var putResp = await fetch(putUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': 'Bearer ' + GITHUB_TOKEN,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: 'Init tokens registry with ' + symbol,
-      content: newContent,
-      branch: GITHUB_BRANCH
-    })
-  });
-  if(!putResp.ok){
-    var errBody = await putResp.text();
-    throw new Error('GitHub 创建失败(' + putResp.status + '): ' + errBody.slice(0, 200));
-  }
-  console.log('✅ 已创建 GitHub 代币列表:', symbol, contractAddr);
+  console.log('✅ 已同步到云端:', symbol, contractAddr);
 }
 
 async function launchToken(){
@@ -1734,7 +1660,7 @@ async function launchToken(){
     }
 
     // ★ 异步推送到 GitHub 云端（不影响页面显示）
-    pushTokenToGitHub(contractAddr, p.name, p.symbol, deployTxHash).catch(function(err){
+    saveTokenToCloud(contractAddr, p.name, p.symbol, deployTxHash).catch(function(err){
       console.warn('云端同步失败（不影响部署）:', err.message);
     });
 

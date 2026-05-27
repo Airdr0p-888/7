@@ -693,13 +693,10 @@
   var currentTab = 'new'; // 'new' | 'done'
   var allTokensCache = [];
 
-  // ★ GitHub 云端存储
-  var GITHUB_OWNER = 'Airdr0p-888';
-  var GITHUB_REPO  = 'token-registry';
-  var GITHUB_BRANCH = 'main';
-  var GITHUB_PATH   = 'tokens.json';
-  var GITHUB_RAW_URL = 'https://raw.githubusercontent.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/' + GITHUB_BRANCH + '/' + GITHUB_PATH;
-  var GITHUB_TOKEN = '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';
+  // ★ Vercel API 存储（无需 Token，数据在服务器端）
+  var API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://' + location.hostname;
 
   // ★ 唯一硬编码工厂地址（BSC 主网），不读取其他来源
   var FACTORY_ADDR_HARDCODED = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
@@ -802,7 +799,7 @@
 
     var githubTokens = null;
     try {
-      githubTokens = await loadTokensFromGitHub();
+      githubTokens = await loadTokensFromCloud();
     } catch(e){
       console.warn('GitHub 读取失败，降级到链上查询:', e.message);
     }
@@ -883,66 +880,34 @@
     }
   }
 
-  /* ─── 从 GitHub 公开仓库读取 tokens.json ─── */
-  async function loadTokensFromGitHub(){
-    var resp = await fetch(GITHUB_RAW_URL, { cache: 'no-cache' });
+  /* ─── 从 Vercel API 读取代币列表 ─── */
+  async function loadTokensFromCloud(){
+    var resp = await fetch(API_BASE + '/api/tokens', { cache: 'no-cache' });
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     var data = await resp.json();
     if(!Array.isArray(data)) throw new Error('格式错误：不是数组');
-    // ★ 只显示本项目部署的代币（按 deployer 钱包过滤）
-    return data.filter(function(t){ return t.d && t.d.toLowerCase() === DEPLOYER_WALLET.toLowerCase(); });
+    return data; // API 已按部署者钱包过滤
   }
 
-  /* ─── 管理员：从 GitHub 删除代币 ─── */
+  /* ─── 管理员：通过 Vercel API 删除代币 ─── */
   function isAdmin(){ return indexAccount && indexAccount.toLowerCase() === ADMIN_WALLET.toLowerCase(); }
 
-  async function deleteTokenFromGitHub(contractAddr){
+  async function deleteTokenFromCloud(contractAddr){
     if(!confirm('确定删除代币 ' + contractAddr.slice(0,10) + '... ？\n\n此操作仅从云端列表移除，不影响链上合约。')) return;
-
-    var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_PATH + '?ref=' + GITHUB_BRANCH;
-
-    // 1. 获取当前 sha
-    var getResp = await fetch(apiUrl, {
-      headers: { 'Authorization': 'Bearer ' + GITHUB_TOKEN, 'Accept': 'application/vnd.github+json' }
+    var resp = await fetch(API_BASE + '/api/tokens', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Wallet': indexAccount
+      },
+      body: JSON.stringify({ a: contractAddr })
     });
-    if(!getResp.ok) throw new Error('GitHub 读取失败: ' + getResp.status);
-    var fileData = await getResp.json();
-    var sha = fileData.sha;
-    var content = JSON.parse(atob(fileData.content));
-
-    // 2. 删除目标代币
-    var newContent = content.filter(function(t){ return t.a !== contractAddr; });
-    if(newContent.length === content.length){
-      alert('未找到该代币');
+    if(!resp.ok){
+      var err = await resp.json().catch(function(){ return {}; });
+      alert(err.error || '删除失败(' + resp.status + ')');
       return;
     }
-
-    // 3. PUT 更新
-    var newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(newContent, null, 2))));
-    var putResp = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': 'Bearer ' + GITHUB_TOKEN,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: 'Remove token ' + contractAddr.slice(0,10) + '...',
-        content: newBase64,
-        sha: sha,
-        branch: GITHUB_BRANCH
-      })
-    });
-
-    if(!putResp.ok){
-      if(putResp.status === 409){
-        alert('写入冲突，请重试');
-        return;
-      }
-      throw new Error('删除失败(' + putResp.status + ')');
-    }
-
-    // 4. 刷新本地列表
+    // 刷新本地列表
     allTokensCache = allTokensCache.filter(function(t){ return t.addr !== contractAddr; });
     renderTokenCols();
     var liveCnt = allTokensCache.filter(function(t){ return t.active; }).length;
@@ -1123,7 +1088,7 @@
 
       // ★ 管理员删除按钮
       if(isAdmin()){
-        html += '<button class="btn-delete-token" onclick="event.stopPropagation();deleteTokenFromGitHub(\'' + t.addr + '\')" title="从列表删除">✕</button>';
+        html += '<button class="btn-delete-token" onclick="event.stopPropagation();deleteTokenFromCloud(\'' + t.addr + '\')" title="从列表删除">✕</button>';
       }
 
       // 顶部行
