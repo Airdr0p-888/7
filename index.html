@@ -246,38 +246,56 @@
       border-color: transparent;
       font-weight: 700;
     }
+    /* 左右双栏容器 */
+    .token-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .token-col { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .token-col-hd {
+      padding: 12px 18px; font-weight: 700; font-size: .9rem;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .token-col-hd.live { background: linear-gradient(135deg, rgba(245,158,11,.1), rgba(249,115,22,.06)); color: #b45309; }
+    .token-col-hd.done { background: linear-gradient(135deg, rgba(16,185,129,.09), rgba(13,148,136,.06)); color: #0f766e; }
+    .token-col-body { padding: 10px; max-height: 520px; overflow-y: auto; }
+
     .token-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 18px;
     }
     .token-card {
-      background: var(--bg-card);
+      background: rgba(255,255,255,.5);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
+      border-radius: 10px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       cursor: pointer;
-      transition: transform .2s, border-color .2s, box-shadow .2s;
+      margin-bottom: 8px;
+      transition: transform .18s, border-color .18s, box-shadow .18s;
     }
-    .token-card:hover { transform: translateY(-4px); border-color: var(--accent2); box-shadow: var(--glow2); }
-    .token-top { display: flex; align-items: center; gap: 14px; }
+    .token-card:last-child { margin-bottom: 0; }
+    .token-card:hover { transform: translateY(-2px); border-color: var(--accent2); box-shadow: var(--glow2); }
+    .token-top { display: flex; align-items: center; gap: 12px; }
     .token-avatar {
-      width: 52px; height: 52px;
+      width: 40px; height: 40px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.8rem;
+      font-size: .85rem;
       flex-shrink: 0;
     }
-    .token-info { flex: 1; }
-    .token-name { font-weight: 700; font-size: 1.05rem; }
-    .token-symbol { font-size: .82rem; color: var(--text-muted); }
-    .token-bar-wrap { background: rgba(124,58,237,.08); border-radius: 50px; height: 6px; overflow: hidden; }
-    .token-bar { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); }
-    .token-meta { display: flex; justify-content: space-between; font-size: .82rem; color: var(--text-muted); }
+    .token-info { flex: 1; min-width: 0; }
+    .token-name { font-weight: 700; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .token-symbol { font-size: .75rem; color: var(--text-muted); }
+    .token-bar-wrap { background: rgba(124,58,237,.08); border-radius: 50px; height: 5px; overflow: hidden; }
+    .token-bar-live { height: 100%; border-radius: 50px; background: linear-gradient(90deg, #f59e0b, #f97316); }
+    .token-bar-done { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--accent1), var(--accent2)); }
+    .token-meta { display: flex; justify-content: space-between; font-size: .76rem; color: var(--text-muted); }
     .token-raised { font-weight: 700; color: var(--accent1); }
+    .col-empty { text-align: center; padding: 32px 12px; color: var(--text-muted); font-size: .83rem; }
+    .col-loading { text-align: center; padding: 24px 12px; color: var(--text-muted); font-size: .83rem; }
+    @media(max-width: 640px) { .token-cols { grid-template-columns: 1fr; } }
 
     /* 加载骨架 */
     .skeleton { animation: skeleton-pulse 1.5s ease-in-out infinite; }
@@ -470,18 +488,24 @@
 <!-- ===== 代币列表 ===== -->
 <section class="token-section">
   <div class="container">
-    <div class="section-header">
-      <div class="section-title gradient-text">🔥 代币列表</div>
-      <div class="tab-bar">
-        <button class="tab active" onclick="switchTab(this,'new')">最新发射</button>
-        <button class="tab" onclick="switchTab(this,'done')">已完成</button>
-      </div>
+    <div class="section-header" style="margin-bottom:18px">
+      <div class="section-title gradient-text">🔥 代币广场</div>
+      <button onclick="loadTokens()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:.8rem;cursor:pointer;color:var(--text-muted)">🔄 刷新</button>
     </div>
-    <div class="token-grid" id="token-grid">
-      <div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px">
-        <div style="font-size:2rem">📡</div>
-        <div>请先连接钱包查看代币列表</div>
-        <button class="btn btn-primary" style="margin-top:6px" onclick="connectIndexWallet()">连接钱包</button>
+    <div class="token-cols">
+      <!-- 左栏：最新发射 -->
+      <div class="token-col">
+        <div class="token-col-hd live">🟠 最新发射</div>
+        <div class="token-col-body" id="col-live">
+          <div class="col-loading">⏳ 加载中...</div>
+        </div>
+      </div>
+      <!-- 右栏：已完成 -->
+      <div class="token-col">
+        <div class="token-col-hd done">🟢 已完成</div>
+        <div class="token-col-body" id="col-done">
+          <div class="col-loading">⏳ 加载中...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -598,6 +622,26 @@
   var currentTab = 'new'; // 'new' | 'done'
   var allTokensCache = []; // { addr, name, symbol, active, fill, collected }
 
+  // ★ 硬编码工厂地址（BSC 主网）
+  var FACTORY_ADDR_HARDCODED = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
+
+  // 公共 BSC RPC（不需要钱包）
+  var BSC_RPC_LIST = [
+    'https://bsc-dataseed1.binance.org/',
+    'https://bsc-dataseed2.binance.org/',
+    'https://bsc-dataseed3.binance.org/'
+  ];
+
+  // 页面加载后直接用公共 RPC 读链
+  window.addEventListener('load', function(){
+    try {
+      indexProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_LIST[0]);
+    } catch(e) {
+      indexProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_LIST[1]);
+    }
+    loadTokens();
+  });
+
   function getWalletProvider(){
     if(window.tokenpocket && window.tokenpocket.isTokenPocket) return window.tokenpocket;
     if(window.ethereum) return window.ethereum;
@@ -608,7 +652,7 @@
   var BSC_TESTNET_INDEX = { chainId: '0x61', chainName: 'BSC Testnet', rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'], nativeCurrency: { name:'tBNB', symbol:'tBNB', decimals:18 }, blockExplorerUrls: ['https://testnet.bscscan.com/'] };
 
   function getFactoryKey(){ return 'modamint_factory_' + (indexIsTestnet ? '97' : '56'); }
-  function loadFactoryAddr(){ return localStorage.getItem(getFactoryKey()); }
+  function loadFactoryAddr(){ return FACTORY_ADDR_HARDCODED; }
 
   async function connectIndexWallet(){
     var wallet = getWalletProvider();
@@ -637,7 +681,6 @@
         document.getElementById('wallet-addr').textContent = indexAccount.slice(0,6)+'...'+indexAccount.slice(-4);
       });
       wallet.on('chainChanged', function(){ window.location.reload(); });
-      loadTokens();
     } catch(e){
       console.error('连接钱包失败:', e);
       alert('连接失败: ' + (e.reason || e.message));
@@ -645,7 +688,9 @@
   }
 
   function disconnectIndexWallet(){
-    indexAccount = ''; indexProvider = null; indexSigner = null;
+    indexAccount = ''; indexSigner = null;
+    // 保留 indexProvider 为公共 RPC
+    indexProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_LIST[0]);
     document.getElementById('btn-wallet').textContent = '📡 连接钱包';
     document.getElementById('btn-wallet').style.color = ''; document.getElementById('btn-wallet').style.borderColor = '';
     document.getElementById('wallet-addr').style.display = 'none';
@@ -655,23 +700,31 @@
      加载代币列表
      ================================================================ */
   async function loadTokens(){
-    var grid = document.getElementById('token-grid');
-    var factoryAddr = loadFactoryAddr();
-    if(!factoryAddr){
-      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">🏭</div><div>未找到工厂合约<br/><span style="font-size:.78rem">请先在发射页面部署一个代币</span></div><a href="launch.html" class="btn btn-primary" style="margin-top:6px">去发射</a></div>';
-      return;
+    var liveBody = document.getElementById('col-live');
+    var doneBody = document.getElementById('col-done');
+    if(!liveBody || !doneBody) return;
+
+    liveBody.innerHTML = '<div class="col-loading">⏳ 从链上加载...</div>';
+    doneBody.innerHTML = '<div class="col-loading">⏳ 从链上加载...</div>';
+
+    // 如果 provider 还没初始化，等一下
+    if(!indexProvider){
+      indexProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_LIST[0]);
     }
-    grid.innerHTML = '<div class="token-card skeleton" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem"><div>⏳ 从链上加载代币列表...</div></div>';
+
+    var factoryAddr = FACTORY_ADDR_HARDCODED;
 
     try {
       var factory = new ethers.Contract(factoryAddr, FACTORY_ABI, indexProvider);
       var count = await factory.getDeployedCount();
       var total = count.toNumber();
       if(total === 0){
-        grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">🚀</div><div>暂无代币，成为第一个发射者！</div><a href="launch.html" class="btn btn-primary" style="margin-top:6px">立即发射</a></div>';
+        liveBody.innerHTML = '<div class="col-empty">🚀 暂无发射中的代币<br/><a href="launch.html" style="color:var(--accent2)">去发射第一个</a></div>';
+        doneBody.innerHTML = '<div class="col-empty">暂无已完成的代币</div>';
         updateStats(0, 0, 0);
         return;
       }
+
       var addrs = [];
       for(var i = 0; i < total; i++){ addrs.push(await factory.getDeployedToken(i)); }
       addrs.reverse(); // 最新在前
@@ -700,18 +753,24 @@
         } catch(e2){ console.warn('读取失败:', addrs[j], e2.message); }
       }
       updateStats(total, totalRaised.toFixed(2), doneCount);
-      renderTokenGrid();
+      renderTokenCols();
     } catch(e){
       console.error('加载代币失败:', e);
-      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div>⚠️ 加载失败</div><div style="font-size:.78rem">' + (e.reason || e.message) + '</div></div>';
+      liveBody.innerHTML = '<div class="col-empty">⚠️ 加载失败<br/><span style="font-size:.75rem">' + (e.reason || e.message) + '</span></div>';
+      doneBody.innerHTML = '<div class="col-empty">⚠️ 加载失败</div>';
     }
   }
 
-  function renderTokenGrid(){
-    var grid = document.getElementById('token-grid');
-    var tokens = currentTab === 'new' ? allTokensCache.filter(function(t){ return t.active; }) : allTokensCache.filter(function(t){ return !t.active; });
+  function renderTokenCols(){
+    var liveTokens = allTokensCache.filter(function(t){ return t.active; });
+    var doneTokens = allTokensCache.filter(function(t){ return !t.active; });
+    renderCol(document.getElementById('col-live'), liveTokens, 'live');
+    renderCol(document.getElementById('col-done'), doneTokens, 'done');
+  }
+
+  function renderCol(container, tokens, type){
     if(tokens.length === 0){
-      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">' + (currentTab === 'new' ? '🔥' : '✅') + '</div><div>' + (currentTab === 'new' ? '暂无正在发射的代币' : '暂无已完成的代币') + '</div></div>';
+      container.innerHTML = '<div class="col-empty">' + (type === 'live' ? '🔥 暂无发射中的代币' : '✅ 暂无已完成的代币') + '</div>';
       return;
     }
     var html = '';
@@ -720,18 +779,20 @@
       var pct = t.fill > 0 ? Math.min(100, (t.collected / t.fill) * 100) : 0;
       var shortName = t.name.length > 14 ? t.name.slice(0,14)+'...' : t.name;
       var shortAddr = t.addr.slice(0,6)+'...'+t.addr.slice(-4);
-      html += '<div class="token-card" onclick="window.open(\'launch.html\',\'_blank\')" title="点击打开发射页面管理此合约">';
+      var barClass = type === 'live' ? 'token-bar-live' : 'token-bar-done';
+      var bscUrl = 'https://bscscan.com/token/' + t.addr;
+      html += '<div class="token-card" onclick="window.open(\'' + bscUrl + '\',\'_blank\')" title="在 BscScan 查看">';
       html += '<div class="token-top">';
-      html += '<div class="token-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent1));color:#fff;font-size:1rem;font-weight:700">' + escH(t.symbol || '?').slice(0,2).toUpperCase() + '</div>';
+      html += '<div class="token-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent1));color:#fff;font-size:.8rem;font-weight:700">' + escH(t.symbol || '?').slice(0,3).toUpperCase() + '</div>';
       html += '<div class="token-info">';
       html += '<div class="token-name">' + escH(shortName) + '</div>';
       html += '<div class="token-symbol">$' + escH(t.symbol || '???') + ' · ' + shortAddr + '</div>';
       html += '</div></div>';
-      html += '<div class="token-bar-wrap"><div class="token-bar" style="width:' + pct.toFixed(1) + '%"></div></div>';
-      html += '<div class="token-meta"><span style="color:var(--accent1)">' + t.collected.toFixed(4) + ' BNB</span><span>' + t.fill.toFixed(4) + ' BNB</span></div>';
+      html += '<div class="token-bar-wrap"><div class="' + barClass + '" style="width:' + pct.toFixed(1) + '%"></div></div>';
+      html += '<div class="token-meta"><span style="color:var(--accent1);font-weight:600">' + t.collected.toFixed(4) + ' BNB</span><span>目标 ' + t.fill.toFixed(4) + ' BNB</span></div>';
       html += '</div>';
     }
-    grid.innerHTML = html;
+    container.innerHTML = html;
   }
 
   function updateStats(tokens, raised, done){
@@ -743,12 +804,12 @@
 
   function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  /* ===== Tab 切换 ===== */
+  /* ===== Tab 切换（已废弃，保留兼容） ===== */
   function switchTab(el, type){
     document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
     el.classList.add('active');
     currentTab = type;
-    if(allTokensCache.length > 0) renderTokenGrid();
+    if(allTokensCache.length > 0) renderTokenCols();
   }
 
   /* ===== 滚动淡入 ===== */
