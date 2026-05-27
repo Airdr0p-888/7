@@ -699,7 +699,7 @@
   var GITHUB_BRANCH = 'main';
   var GITHUB_PATH   = 'tokens.json';
   var GITHUB_RAW_URL = 'https://raw.githubusercontent.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/' + GITHUB_BRANCH + '/' + GITHUB_PATH;
-  var GITHUB_TOKEN = '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';
+  var GITHUB_TOKEN = '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';
 
   // ★ 唯一硬编码工厂地址（BSC 主网），不读取其他来源
   var FACTORY_ADDR_HARDCODED = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
@@ -807,8 +807,16 @@
       console.warn('GitHub 读取失败，降级到链上查询:', e.message);
     }
 
-    // ★ 步骤2：如果有 GitHub 数据，立即渲染卡片骨架
-    if(githubTokens && githubTokens.length > 0){
+    // ★ 步骤2：GitHub 加载成功（包括空数组），不再走链上降级
+    if(githubTokens !== null){
+      if(githubTokens.length === 0){
+        liveBody.innerHTML = '<div class="col-empty">🚀 暂无代币<br/><a href="launch.html" style="color:var(--accent2)">去发射第一个</a></div>';
+        doneBody.innerHTML = '<div class="col-empty">暂无代币</div>';
+        if(cntLive) cntLive.textContent = '0';
+        if(cntDone) cntDone.textContent = '0';
+        updateStats(0, 0, 0);
+        return;
+      }
       console.log('☁️ GitHub 代币数:', githubTokens.length);
       allTokensCache = githubTokens.map(function(gt){
         return {
