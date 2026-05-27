@@ -273,10 +273,29 @@
       gap: 9px;
       cursor: pointer;
       margin-bottom: 9px;
+      position: relative;
       transition: transform .18s, border-color .18s, box-shadow .18s;
     }
     .token-card:last-child { margin-bottom: 0; }
     .token-card:hover { transform: translateY(-2px); border-color: var(--accent2); box-shadow: 0 4px 18px rgba(109,40,217,.12); }
+
+    /* 管理员删除按钮 */
+    .btn-delete-token {
+      position: absolute; top: 8px; right: 8px;
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1px solid rgba(220,38,38,.3);
+      background: rgba(220,38,38,.08);
+      color: #dc2626;
+      font-size: .68rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 2;
+      transition: all .15s;
+      line-height: 1;
+    }
+    .btn-delete-token:hover {
+      background: #dc2626; color: #fff;
+      border-color: #dc2626;
+    }
 
     /* 卡片顶部：头像 + 名字 + 状态标签 */
     .token-top { display: flex; align-items: center; gap: 11px; }
@@ -674,10 +693,19 @@
   var currentTab = 'new'; // 'new' | 'done'
   var allTokensCache = [];
 
+  // ★ GitHub 云端存储
+  var GITHUB_OWNER = 'Airdr0p-888';
+  var GITHUB_REPO  = 'token-registry';
+  var GITHUB_BRANCH = 'main';
+  var GITHUB_PATH   = 'tokens.json';
+  var GITHUB_RAW_URL = 'https://raw.githubusercontent.com/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/' + GITHUB_BRANCH + '/' + GITHUB_PATH;
+  var GITHUB_TOKEN = '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';
+
   // ★ 唯一硬编码工厂地址（BSC 主网），不读取其他来源
   var FACTORY_ADDR_HARDCODED = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
   // ★ 只显示该钱包部署的代币
   var DEPLOYER_WALLET = '0x2aF55B34E616dCe99230fC8C694a6E6fFdF79e5b';
+  var ADMIN_WALLET    = '0xF11fF8Db8DC0bd36B82154Af94A9f77d53fee8ee'; // 有删除权限的管理员
 
   // 公共 BSC RPC（不需要钱包）
   var BSC_RPC_LIST = [
@@ -728,6 +756,8 @@
       document.getElementById('btn-wallet').style.borderColor = 'rgba(34,197,94,.4)';
       document.getElementById('wallet-addr').textContent = indexAccount.slice(0,6)+'...'+indexAccount.slice(-4);
       document.getElementById('wallet-addr').style.display = 'inline';
+      // 管理员：刷新卡片显示删除按钮
+      if(allTokensCache.length > 0) renderTokenCols();
       wallet.on('accountsChanged', function(accts){
         if(accts.length === 0){ disconnectIndexWallet(); return; }
         indexAccount = accts[0];
@@ -747,32 +777,76 @@
     document.getElementById('btn-wallet').textContent = '📡 连接钱包';
     document.getElementById('btn-wallet').style.color = ''; document.getElementById('btn-wallet').style.borderColor = '';
     document.getElementById('wallet-addr').style.display = 'none';
+    // 退出管理员模式，隐藏删除按钮
+    if(allTokensCache.length > 0) renderTokenCols();
   }
 
   /* ================================================================
-     加载代币列表（只统计 FACTORY_ADDR_HARDCODED）
+     加载代币列表
+     策略：优先从 GitHub 云端读取（毫秒级），链上仅同步动态数据
      ================================================================ */
   async function loadTokens(){
     var liveBody = document.getElementById('col-live');
     var doneBody = document.getElementById('col-done');
     if(!liveBody || !doneBody) return;
-
-    liveBody.innerHTML = '<div class="col-loading skeleton">⏳ 从链上读取...</div>';
-    doneBody.innerHTML = '<div class="col-loading skeleton">⏳ 从链上读取...</div>';
     var cntLive = document.getElementById('cnt-live');
     var cntDone = document.getElementById('cnt-done');
-    if(cntLive) cntLive.textContent = '…';
-    if(cntDone) cntDone.textContent = '…';
 
     if(!indexProvider){
       indexProvider = new ethers.providers.JsonRpcProvider(BSC_RPC_LIST[0]);
     }
 
-    try {
-      // ★ 通过 TokenDeployed 事件按部署者钱包过滤
-      var addrs = await getDeployerTokens(indexProvider, FACTORY_ADDR_HARDCODED, DEPLOYER_WALLET);
-      // addrs 已按最新在前排列
+    // ★ 步骤1：从 GitHub 读取代币列表（静态数据）
+    liveBody.innerHTML = '<div class="col-loading skeleton">☁️ 从云端加载...</div>';
+    doneBody.innerHTML = '<div class="col-loading skeleton">☁️ 从云端加载...</div>';
 
+    var githubTokens = null;
+    try {
+      githubTokens = await loadTokensFromGitHub();
+    } catch(e){
+      console.warn('GitHub 读取失败，降级到链上查询:', e.message);
+    }
+
+    // ★ 步骤2：如果有 GitHub 数据，立即渲染卡片骨架
+    if(githubTokens && githubTokens.length > 0){
+      console.log('☁️ GitHub 代币数:', githubTokens.length);
+      allTokensCache = githubTokens.map(function(gt){
+        return {
+          addr: gt.a,
+          name: gt.n,
+          symbol: gt.s,
+          active: false,        // 等下从链上更新
+          fill: 0, collected: 0, mintCost: 0,
+          buyTax: 0, sellTax: 0, mktBps: 0, burnBps: 0, divBps: 0, liqBps: 0,
+          _githubLoaded: true
+        };
+      });
+      // 按时间戳降序（最新的在前）
+      allTokensCache.sort(function(x, y){
+        var tx = githubTokens.find(function(t){ return t.a === x.addr; });
+        var ty = githubTokens.find(function(t){ return t.a === y.addr; });
+        return (ty ? ty.t : 0) - (tx ? tx.t : 0);
+      });
+      renderTokenCols();
+      updateStats(allTokensCache.length, '...', '...');
+      if(cntLive) cntLive.textContent = '…';
+      if(cntDone) cntDone.textContent = '…';
+
+      // ★ 步骤3：逐代币从链上更新动态数据（mint 进度、税收等）
+      liveBody.innerHTML = '<div class="col-loading">🔄 同步链上状态...</div>';
+      doneBody.innerHTML = '<div class="col-loading">🔄 同步链上状态...</div>';
+      await syncTokensFromChain();
+      return;
+    }
+
+    // ★ 步骤4：降级方案 — 链上 RPC 事件扫描
+    liveBody.innerHTML = '<div class="col-loading skeleton">⏳ 从链上读取...</div>';
+    doneBody.innerHTML = '<div class="col-loading skeleton">⏳ 从链上读取...</div>';
+    if(cntLive) cntLive.textContent = '…';
+    if(cntDone) cntDone.textContent = '…';
+
+    try {
+      var addrs = await getDeployerTokens(indexProvider, FACTORY_ADDR_HARDCODED, DEPLOYER_WALLET);
       if(addrs.length === 0){
         liveBody.innerHTML = '<div class="col-empty">🚀 暂无发射中的代币<br/><a href="launch.html" style="color:var(--accent2)">去发射第一个</a></div>';
         doneBody.innerHTML = '<div class="col-empty">暂无已完成的代币</div>';
@@ -781,49 +855,15 @@
         updateStats(0, 0, 0);
         return;
       }
-
       allTokensCache = [];
       var doneCount = 0;
       var totalRaised = 0;
-
       for(var j = 0; j < addrs.length; j++){
         try {
-          var token = new ethers.Contract(addrs[j], CONTRACT_DATA.ABI, indexProvider);
-          var results = await Promise.all([
-            token.name().catch(function(){ return '?'; }),
-            token.symbol().catch(function(){ return '?'; }),
-            token.presaleActive().catch(function(){ return null; }),
-            token.fillAmountBNB().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.totalBNBCollected().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.mintCostBNB().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.buyTaxBps().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.sellTaxBps().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.marketingBps().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.burnBps().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.dividendBps().catch(function(){ return ethers.BigNumber.from(0); }),
-            token.liquidityBps().catch(function(){ return ethers.BigNumber.from(0); })
-          ]);
-          var fillB = parseFloat(ethers.utils.formatEther(results[3]));
-          var collB = parseFloat(ethers.utils.formatEther(results[4]));
-          totalRaised += collB;
-          var isActive = results[2];
-          var active = (isActive === true || (isActive !== false && collB < fillB && fillB > 0));
-          if(!active) doneCount++;
-          allTokensCache.push({
-            addr: addrs[j],
-            name: results[0],
-            symbol: results[1],
-            active: active,
-            fill: fillB,
-            collected: collB,
-            mintCost: parseFloat(ethers.utils.formatEther(results[5])),
-            buyTax: results[6].toNumber(),
-            sellTax: results[7].toNumber(),
-            mktBps: results[8].toNumber(),
-            burnBps: results[9].toNumber(),
-            divBps: results[10].toNumber(),
-            liqBps: results[11].toNumber()
-          });
+          var t = await fetchTokenData(addrs[j]);
+          totalRaised += t.collected;
+          if(!t.active) doneCount++;
+          allTokensCache.push(t);
         } catch(e2){ console.warn('读取代币失败:', addrs[j], e2.message); }
       }
       updateStats(addrs.length, totalRaised.toFixed(2), doneCount);
@@ -833,6 +873,139 @@
       liveBody.innerHTML = '<div class="col-empty">⚠️ 加载失败<br/><span style="font-size:.75rem">' + (e.reason || e.message) + '</span></div>';
       doneBody.innerHTML = '<div class="col-empty">⚠️ 加载失败</div>';
     }
+  }
+
+  /* ─── 从 GitHub 公开仓库读取 tokens.json ─── */
+  async function loadTokensFromGitHub(){
+    var resp = await fetch(GITHUB_RAW_URL, { cache: 'no-cache' });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var data = await resp.json();
+    if(!Array.isArray(data)) throw new Error('格式错误：不是数组');
+    // ★ 只显示本项目部署的代币（按 deployer 钱包过滤）
+    return data.filter(function(t){ return t.d && t.d.toLowerCase() === DEPLOYER_WALLET.toLowerCase(); });
+  }
+
+  /* ─── 管理员：从 GitHub 删除代币 ─── */
+  function isAdmin(){ return indexAccount && indexAccount.toLowerCase() === ADMIN_WALLET.toLowerCase(); }
+
+  async function deleteTokenFromGitHub(contractAddr){
+    if(!confirm('确定删除代币 ' + contractAddr.slice(0,10) + '... ？\n\n此操作仅从云端列表移除，不影响链上合约。')) return;
+
+    var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_PATH + '?ref=' + GITHUB_BRANCH;
+
+    // 1. 获取当前 sha
+    var getResp = await fetch(apiUrl, {
+      headers: { 'Authorization': 'Bearer ' + GITHUB_TOKEN, 'Accept': 'application/vnd.github+json' }
+    });
+    if(!getResp.ok) throw new Error('GitHub 读取失败: ' + getResp.status);
+    var fileData = await getResp.json();
+    var sha = fileData.sha;
+    var content = JSON.parse(atob(fileData.content));
+
+    // 2. 删除目标代币
+    var newContent = content.filter(function(t){ return t.a !== contractAddr; });
+    if(newContent.length === content.length){
+      alert('未找到该代币');
+      return;
+    }
+
+    // 3. PUT 更新
+    var newBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(newContent, null, 2))));
+    var putResp = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + GITHUB_TOKEN,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: 'Remove token ' + contractAddr.slice(0,10) + '...',
+        content: newBase64,
+        sha: sha,
+        branch: GITHUB_BRANCH
+      })
+    });
+
+    if(!putResp.ok){
+      if(putResp.status === 409){
+        alert('写入冲突，请重试');
+        return;
+      }
+      throw new Error('删除失败(' + putResp.status + ')');
+    }
+
+    // 4. 刷新本地列表
+    allTokensCache = allTokensCache.filter(function(t){ return t.addr !== contractAddr; });
+    renderTokenCols();
+    var liveCnt = allTokensCache.filter(function(t){ return t.active; }).length;
+    var doneCnt = allTokensCache.filter(function(t){ return !t.active; }).length;
+    updateStats(allTokensCache.length, '...', doneCnt);
+    var cl = document.getElementById('cnt-live'); if(cl) cl.textContent = liveCnt;
+    var cd = document.getElementById('cnt-done'); if(cd) cd.textContent = doneCnt;
+    console.log('🗑️ 已删除:', contractAddr);
+  }
+
+  /* ─── 读取单个代币的链上数据 ─── */
+  async function fetchTokenData(addr){
+    var token = new ethers.Contract(addr, CONTRACT_DATA.ABI, indexProvider);
+    var results = await Promise.all([
+      token.name().catch(function(){ return '?'; }),
+      token.symbol().catch(function(){ return '?'; }),
+      token.presaleActive().catch(function(){ return null; }),
+      token.fillAmountBNB().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.totalBNBCollected().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.mintCostBNB().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.buyTaxBps().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.sellTaxBps().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.marketingBps().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.burnBps().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.dividendBps().catch(function(){ return ethers.BigNumber.from(0); }),
+      token.liquidityBps().catch(function(){ return ethers.BigNumber.from(0); })
+    ]);
+    var fillB = parseFloat(ethers.utils.formatEther(results[3]));
+    var collB = parseFloat(ethers.utils.formatEther(results[4]));
+    var isActive = results[2];
+    var active = (isActive === true || (isActive !== false && collB < fillB && fillB > 0));
+    return {
+      addr: addr,
+      name: results[0],
+      symbol: results[1],
+      active: active,
+      fill: fillB,
+      collected: collB,
+      mintCost: parseFloat(ethers.utils.formatEther(results[5])),
+      buyTax: results[6].toNumber(),
+      sellTax: results[7].toNumber(),
+      mktBps: results[8].toNumber(),
+      burnBps: results[9].toNumber(),
+      divBps: results[10].toNumber(),
+      liqBps: results[11].toNumber()
+    };
+  }
+
+  /* ─── 从链上同步动态数据到已渲染的代币列表 ─── */
+  async function syncTokensFromChain(){
+    var doneCount = 0;
+    var totalRaised = 0;
+    for(var i = 0; i < allTokensCache.length; i++){
+      try {
+        var t = await fetchTokenData(allTokensCache[i].addr);
+        allTokensCache[i].active = t.active;
+        allTokensCache[i].fill = t.fill;
+        allTokensCache[i].collected = t.collected;
+        allTokensCache[i].mintCost = t.mintCost;
+        allTokensCache[i].buyTax = t.buyTax;
+        allTokensCache[i].sellTax = t.sellTax;
+        allTokensCache[i].mktBps = t.mktBps;
+        allTokensCache[i].burnBps = t.burnBps;
+        allTokensCache[i].divBps = t.divBps;
+        allTokensCache[i].liqBps = t.liqBps;
+        totalRaised += t.collected;
+        if(!t.active) doneCount++;
+      } catch(e){ console.warn('同步', allTokensCache[i].addr, '失败:', e.message); }
+    }
+    updateStats(allTokensCache.length, totalRaised.toFixed(2), doneCount);
+    renderTokenCols();
   }
 
   /* 通过 TokenDeployed 事件过滤指定部署者的代币地址（最新在前）
@@ -939,6 +1112,11 @@
       if(!distHtml) distHtml = '<span class="tax-dist">无分配</span>';
 
       html += '<div class="token-card" onclick="window.open(\'' + bscUrl + '\',\'_blank\')" title="在 BscScan 查看">';
+
+      // ★ 管理员删除按钮
+      if(isAdmin()){
+        html += '<button class="btn-delete-token" onclick="event.stopPropagation();deleteTokenFromGitHub(\'' + t.addr + '\')" title="从列表删除">✕</button>';
+      }
 
       // 顶部行
       html += '<div class="token-top">';
