@@ -386,6 +386,10 @@
       .btn-lg { padding: 12px 24px; font-size: .92rem; }
     }
   </style>
+  <!-- ethers.js v5 + 合约编译数据 -->
+  <script src="ethers.umd.min.js"></script>
+  <script src="contract_data.js?v=20260526r2"></script>
+  <script src="factory_data.js?v=20260526r2"></script>
 </head>
 <body>
 
@@ -404,6 +408,8 @@
         </span>
       </a>
       <div class="nav-links">
+        <span id="wallet-addr" style="display:none;font-size:.8rem;color:var(--text-muted);font-family:monospace"></span>
+        <button class="btn btn-ghost" id="btn-wallet" onclick="connectIndexWallet()">📡 连接钱包</button>
         <a href="#about" class="btn btn-ghost">了解更多</a>
         <a href="launch.html" class="btn btn-primary">🚀 发射代币</a>
       </div>
@@ -472,44 +478,10 @@
       </div>
     </div>
     <div class="token-grid" id="token-grid">
-      <!-- 骨架屏 -->
-      <div class="token-card skeleton" style="opacity:.5">
-        <div class="token-top">
-          <div class="token-avatar" style="background:rgba(124,58,237,.08)"></div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-            <div class="sk-line" style="width:60%"></div>
-            <div class="sk-line" style="width:40%"></div>
-          </div>
-        </div>
-        <div class="token-bar-wrap"><div class="token-bar" style="width:0%"></div></div>
-        <div class="token-meta"><span class="sk-line" style="width:40%"></span><span class="sk-line" style="width:30%"></span></div>
-      </div>
-      <div class="token-card skeleton" style="opacity:.35">
-        <div class="token-top">
-          <div class="token-avatar" style="background:rgba(124,58,237,.08)"></div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-            <div class="sk-line" style="width:55%"></div>
-            <div class="sk-line" style="width:35%"></div>
-          </div>
-        </div>
-        <div class="token-bar-wrap"><div class="token-bar" style="width:0%"></div></div>
-        <div class="token-meta"><span class="sk-line" style="width:40%"></span><span class="sk-line" style="width:30%"></span></div>
-      </div>
-      <div class="token-card skeleton" style="opacity:.2">
-        <div class="token-top">
-          <div class="token-avatar" style="background:rgba(124,58,237,.08)"></div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-            <div class="sk-line" style="width:50%"></div>
-            <div class="sk-line" style="width:30%"></div>
-          </div>
-        </div>
-        <div class="token-bar-wrap"><div class="token-bar" style="width:0%"></div></div>
-        <div class="token-meta"><span class="sk-line" style="width:40%"></span><span class="sk-line" style="width:30%"></span></div>
-      </div>
-      <div class="token-card" style="align-items:center;justify-content:center;min-height:140px;color:var(--text-muted);font-size:.95rem;gap:8px">
-        <div style="font-size:2rem">🚀</div>
-        <div>暂无代币，成为第一个发射者！</div>
-        <a href="launch.html" class="btn btn-primary" style="margin-top:6px">立即发射</a>
+      <div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px">
+        <div style="font-size:2rem">📡</div>
+        <div>请先连接钱包查看代币列表</div>
+        <button class="btn btn-primary" style="margin-top:6px" onclick="connectIndexWallet()">连接钱包</button>
       </div>
     </div>
   </div>
@@ -616,46 +588,177 @@
     }
   })();
 
-  /* ===== 数字滚动 ===== */
-  function countUp(id, target, suffix) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    let cur = 0;
-    const step = Math.max(1, Math.ceil(target / 60));
-    const timer = setInterval(() => {
-      cur = Math.min(cur + step, target);
-      el.textContent = cur.toLocaleString() + (suffix || '');
-      if (cur >= target) clearInterval(timer);
-    }, 30);
+  /* ================================================================
+     钱包 & 链上数据
+     ================================================================ */
+  var indexProvider = null;
+  var indexSigner = null;
+  var indexAccount = '';
+  var indexIsTestnet = false;
+  var currentTab = 'new'; // 'new' | 'done'
+  var allTokensCache = []; // { addr, name, symbol, active, fill, collected }
+
+  function getWalletProvider(){
+    if(window.tokenpocket && window.tokenpocket.isTokenPocket) return window.tokenpocket;
+    if(window.ethereum) return window.ethereum;
+    return null;
   }
 
-  /* 从链上/API 加载数据时替换为真实请求，这里用演示值 */
-  window.addEventListener('load', () => {
-    countUp('stat-tokens', 0);
-    countUp('stat-raised', 0);
-    countUp('stat-users', 0);
-    countUp('stat-done', 0);
-  });
+  var BSC_MAINNET_INDEX = { chainId: '0x38', chainName: 'BNB Smart Chain', rpcUrls: ['https://bsc-dataseed.binance.org/'], nativeCurrency: { name:'BNB', symbol:'BNB', decimals:18 }, blockExplorerUrls: ['https://bscscan.com/'] };
+  var BSC_TESTNET_INDEX = { chainId: '0x61', chainName: 'BSC Testnet', rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'], nativeCurrency: { name:'tBNB', symbol:'tBNB', decimals:18 }, blockExplorerUrls: ['https://testnet.bscscan.com/'] };
+
+  function getFactoryKey(){ return 'modamint_factory_' + (indexIsTestnet ? '97' : '56'); }
+  function loadFactoryAddr(){ return localStorage.getItem(getFactoryKey()); }
+
+  async function connectIndexWallet(){
+    var wallet = getWalletProvider();
+    if(!wallet){ alert('未检测到钱包！请安装 MetaMask 或 TokenPocket'); return; }
+    try {
+      var target = indexIsTestnet ? BSC_TESTNET_INDEX : BSC_MAINNET_INDEX;
+      try { await wallet.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: target.chainId }] }); }
+      catch(e){ if(e.code === 4902){ await wallet.request({ method: 'wallet_addEthereumChain', params: [target] }); } else throw e; }
+      var accounts = await wallet.request({ method: 'eth_requestAccounts' });
+      if(!accounts || accounts.length === 0) throw new Error('未获取到账户');
+      indexAccount = accounts[0];
+      indexProvider = new ethers.providers.Web3Provider(wallet);
+      indexSigner = indexProvider.getSigner();
+      var net = await indexProvider.getNetwork();
+      indexIsTestnet = (net.chainId === 97);
+      var walletType = window.tokenpocket && window.tokenpocket.isTokenPocket ? 'TP' : 'MetaMask';
+      document.getElementById('btn-wallet').textContent = walletType + ' ✓';
+      document.getElementById('btn-wallet').style.color = '#15803d';
+      document.getElementById('btn-wallet').style.borderColor = 'rgba(34,197,94,.4)';
+      document.getElementById('wallet-addr').textContent = indexAccount.slice(0,6)+'...'+indexAccount.slice(-4);
+      document.getElementById('wallet-addr').style.display = 'inline';
+      wallet.on('accountsChanged', function(accts){
+        if(accts.length === 0){ disconnectIndexWallet(); return; }
+        indexAccount = accts[0];
+        indexSigner = indexProvider.getSigner();
+        document.getElementById('wallet-addr').textContent = indexAccount.slice(0,6)+'...'+indexAccount.slice(-4);
+      });
+      wallet.on('chainChanged', function(){ window.location.reload(); });
+      loadTokens();
+    } catch(e){
+      console.error('连接钱包失败:', e);
+      alert('连接失败: ' + (e.reason || e.message));
+    }
+  }
+
+  function disconnectIndexWallet(){
+    indexAccount = ''; indexProvider = null; indexSigner = null;
+    document.getElementById('btn-wallet').textContent = '📡 连接钱包';
+    document.getElementById('btn-wallet').style.color = ''; document.getElementById('btn-wallet').style.borderColor = '';
+    document.getElementById('wallet-addr').style.display = 'none';
+  }
+
+  /* ================================================================
+     加载代币列表
+     ================================================================ */
+  async function loadTokens(){
+    var grid = document.getElementById('token-grid');
+    var factoryAddr = loadFactoryAddr();
+    if(!factoryAddr){
+      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">🏭</div><div>未找到工厂合约<br/><span style="font-size:.78rem">请先在发射页面部署一个代币</span></div><a href="launch.html" class="btn btn-primary" style="margin-top:6px">去发射</a></div>';
+      return;
+    }
+    grid.innerHTML = '<div class="token-card skeleton" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem"><div>⏳ 从链上加载代币列表...</div></div>';
+
+    try {
+      var factory = new ethers.Contract(factoryAddr, FACTORY_ABI, indexProvider);
+      var count = await factory.getDeployedCount();
+      var total = count.toNumber();
+      if(total === 0){
+        grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">🚀</div><div>暂无代币，成为第一个发射者！</div><a href="launch.html" class="btn btn-primary" style="margin-top:6px">立即发射</a></div>';
+        updateStats(0, 0, 0);
+        return;
+      }
+      var addrs = [];
+      for(var i = 0; i < total; i++){ addrs.push(await factory.getDeployedToken(i)); }
+      addrs.reverse(); // 最新在前
+
+      allTokensCache = [];
+      var doneCount = 0;
+      var totalRaised = 0;
+
+      for(var j = 0; j < addrs.length; j++){
+        try {
+          var token = new ethers.Contract(addrs[j], CONTRACT_DATA.ABI, indexProvider);
+          var results = await Promise.all([
+            token.name().catch(function(){ return '?'; }),
+            token.symbol().catch(function(){ return '?'; }),
+            token.presaleActive().catch(function(){ return null; }),
+            token.fillAmountBNB().catch(function(){ return ethers.BigNumber.from(0); }),
+            token.totalBNBCollected().catch(function(){ return ethers.BigNumber.from(0); })
+          ]);
+          var isActive = results[2];
+          var fillB = parseFloat(ethers.utils.formatEther(results[3]));
+          var collB = parseFloat(ethers.utils.formatEther(results[4]));
+          totalRaised += collB;
+          var active = (isActive === true || (isActive !== false && collB < fillB && fillB > 0));
+          if(!active) doneCount++;
+          allTokensCache.push({ addr: addrs[j], name: results[0], symbol: results[1], active: active, fill: fillB, collected: collB });
+        } catch(e2){ console.warn('读取失败:', addrs[j], e2.message); }
+      }
+      updateStats(total, totalRaised.toFixed(2), doneCount);
+      renderTokenGrid();
+    } catch(e){
+      console.error('加载代币失败:', e);
+      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div>⚠️ 加载失败</div><div style="font-size:.78rem">' + (e.reason || e.message) + '</div></div>';
+    }
+  }
+
+  function renderTokenGrid(){
+    var grid = document.getElementById('token-grid');
+    var tokens = currentTab === 'new' ? allTokensCache.filter(function(t){ return t.active; }) : allTokensCache.filter(function(t){ return !t.active; });
+    if(tokens.length === 0){
+      grid.innerHTML = '<div class="token-card" style="align-items:center;justify-content:center;min-height:160px;color:var(--text-muted);font-size:.95rem;gap:8px"><div style="font-size:2rem">' + (currentTab === 'new' ? '🔥' : '✅') + '</div><div>' + (currentTab === 'new' ? '暂无正在发射的代币' : '暂无已完成的代币') + '</div></div>';
+      return;
+    }
+    var html = '';
+    for(var i = 0; i < tokens.length; i++){
+      var t = tokens[i];
+      var pct = t.fill > 0 ? Math.min(100, (t.collected / t.fill) * 100) : 0;
+      var shortName = t.name.length > 14 ? t.name.slice(0,14)+'...' : t.name;
+      var shortAddr = t.addr.slice(0,6)+'...'+t.addr.slice(-4);
+      html += '<div class="token-card" onclick="window.open(\'launch.html\',\'_blank\')" title="点击打开发射页面管理此合约">';
+      html += '<div class="token-top">';
+      html += '<div class="token-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent1));color:#fff;font-size:1rem;font-weight:700">' + escH(t.symbol || '?').slice(0,2).toUpperCase() + '</div>';
+      html += '<div class="token-info">';
+      html += '<div class="token-name">' + escH(shortName) + '</div>';
+      html += '<div class="token-symbol">$' + escH(t.symbol || '???') + ' · ' + shortAddr + '</div>';
+      html += '</div></div>';
+      html += '<div class="token-bar-wrap"><div class="token-bar" style="width:' + pct.toFixed(1) + '%"></div></div>';
+      html += '<div class="token-meta"><span style="color:var(--accent1)">' + t.collected.toFixed(4) + ' BNB</span><span>' + t.fill.toFixed(4) + ' BNB</span></div>';
+      html += '</div>';
+    }
+    grid.innerHTML = html;
+  }
+
+  function updateStats(tokens, raised, done){
+    document.getElementById('stat-tokens').textContent = tokens;
+    document.getElementById('stat-raised').textContent = raised;
+    document.getElementById('stat-done').textContent = done;
+    document.getElementById('stat-users').textContent = tokens > 0 ? tokens : 0;
+  }
+
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   /* ===== Tab 切换 ===== */
-  function switchTab(el, type) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  function switchTab(el, type){
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
     el.classList.add('active');
-    // TODO: 根据 type 从合约读取对应列表
-    console.log('切换到：', type);
+    currentTab = type;
+    if(allTokensCache.length > 0) renderTokenGrid();
   }
 
   /* ===== 滚动淡入 ===== */
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.style.opacity = '1';
-        e.target.style.transform = 'translateY(0)';
-      }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }
     });
   }, { threshold: .12 });
 
-  document.querySelectorAll('.feature-card, .stat-card, .about-inner').forEach(el => {
+  document.querySelectorAll('.feature-card, .stat-card, .about-inner').forEach(function(el){
     el.style.cssText += ';opacity:0;transform:translateY(24px);transition:opacity .55s ease,transform .55s ease';
     io.observe(el);
   });

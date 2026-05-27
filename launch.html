@@ -415,38 +415,6 @@
       .nav-right { gap:8px; }
       .wallet-banner { flex-direction:column; align-items:flex-start; }
     }
-
-    /* ── 代币广场 ── */
-    .token-plaza { max-width:1100px; margin:0 auto 24px; padding:0 24px; position:relative; z-index:1; }
-    .token-plaza h2 { text-align:center; font-size:1.4rem; margin-bottom:16px; color:var(--text-main); }
-    .plaza-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    .plaza-col { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-    .plaza-col-header { padding:12px 16px; font-weight:700; font-size:.9rem; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); }
-    .plaza-col-header.live { background:linear-gradient(135deg, rgba(245,158,11,.12), rgba(249,115,22,.08)); color:#b45309; }
-    .plaza-col-header.done { background:linear-gradient(135deg, rgba(16,185,129,.1), rgba(13,148,136,.08)); color:#0f766e; }
-    .plaza-col-body { padding:10px; max-height:500px; overflow-y:auto; }
-    .plaza-card {
-      background:rgba(255,255,255,.45); border:1px solid var(--border); border-radius:10px;
-      padding:12px 14px; margin-bottom:8px; cursor:pointer; transition:all .18s;
-    }
-    .plaza-card:hover { border-color:var(--accent2); box-shadow:0 2px 12px rgba(124,58,237,.1); transform:translateY(-1px); }
-    .plaza-card:last-child { margin-bottom:0; }
-    .plaza-card-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-    .plaza-card-icon { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, var(--accent2), var(--accent1)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:.75rem; font-weight:700; flex-shrink:0; }
-    .plaza-card-name { font-weight:700; font-size:.85rem; color:var(--text-main); }
-    .plaza-card-symbol { font-size:.72rem; color:var(--text-muted); }
-    .plaza-card-addr { font-size:.7rem; color:var(--text-muted); font-family:monospace; margin-bottom:4px; }
-    .plaza-card-progress { margin-top:6px; }
-    .plaza-progress-bar { height:5px; background:rgba(0,0,0,.08); border-radius:3px; overflow:hidden; margin-bottom:3px; }
-    .plaza-progress-fill { height:100%; border-radius:3px; transition:width .3s; }
-    .plaza-progress-fill.live { background:linear-gradient(90deg, #f59e0b, #f97316); }
-    .plaza-progress-fill.done { background:linear-gradient(90deg, #10b981, #0d9488); }
-    .plaza-progress-text { font-size:.7rem; color:var(--text-muted); display:flex; justify-content:space-between; }
-    .plaza-empty { text-align:center; padding:30px 16px; color:var(--text-muted); font-size:.82rem; }
-    .plaza-loading { text-align:center; padding:20px; color:var(--text-muted); font-size:.82rem; }
-    @media(max-width:640px) {
-      .plaza-grid { grid-template-columns:1fr; }
-    }
   </style>
   <!-- ethers.js v5 本地文件 + 合约编译数据 -->
   <script src="ethers.umd.min.js"></script>
@@ -494,23 +462,6 @@
 <div class="page-hero">
   <h1>🚀 <span class="gradient-text">发射你的代币</span></h1>
   <p>填写以下信息，一键在 BNB 链上部署你的 Meme 代币合约</p>
-</div>
-
-<!-- ── 代币广场 ── -->
-<div class="token-plaza" id="token-plaza" style="display:none">
-  <h2>🔥 代币广场</h2>
-  <div class="plaza-grid">
-    <!-- 左：最新发射 -->
-    <div class="plaza-col">
-      <div class="plaza-col-header live">🟠 最新发射</div>
-      <div class="plaza-col-body" id="plaza-live"></div>
-    </div>
-    <!-- 右：已完成 -->
-    <div class="plaza-col">
-      <div class="plaza-col-header done">🟢 已完成</div>
-      <div class="plaza-col-body" id="plaza-done"></div>
-    </div>
-  </div>
 </div>
 
 <!-- ── 步骤 ── -->
@@ -1142,9 +1093,6 @@ async function connectWallet(){
     // 显示「管理合约」导航按钮
     document.getElementById('btn-admin-nav').style.display = 'inline-block';
 
-    // 加载代币广场
-    loadTokenPlaza();
-
     // 监听账户/链切换
     wallet.on('accountsChanged', (accts) => {
       if(accts.length === 0){ disconnectWallet(); return; }
@@ -1682,8 +1630,6 @@ async function launchToken(){
     if(typeof initAdminPanel === 'function'){
       initAdminPanel(contractAddr);
     }
-    // 刷新代币广场
-    loadTokenPlaza();
 
   } catch(e){
     console.error('部署失败:', e);
@@ -2721,134 +2667,6 @@ async function doLoadAdminContract() {
   } catch(e) {
     alert('加载合约失败: ' + (e.reason || e.message));
   }
-}
-
-/* ================================================================
-   代币广场 — 从工厂合约加载已部署代币列表
-   ================================================================ */
-
-// ★★★ 你的工厂合约地址（主网部署后替换） ★★★
-var TOKEN_PLAZA_FACTORY = null; // 自动从 localStorage 读取首次部署的工厂地址
-
-async function loadTokenPlaza(){
-  if(!provider) return;
-
-  // 自动从 localStorage 获取工厂地址
-  if(!TOKEN_PLAZA_FACTORY){
-    TOKEN_PLAZA_FACTORY = loadFactory();
-  }
-  if(!TOKEN_PLAZA_FACTORY){
-    // 没有部署过，不显示广场
-    return;
-  }
-
-  var plaza = document.getElementById('token-plaza');
-  var liveBody = document.getElementById('plaza-live');
-  var doneBody = document.getElementById('plaza-done');
-
-  plaza.style.display = 'block';
-  liveBody.innerHTML = '<div class="plaza-loading">⏳ 加载中...</div>';
-  doneBody.innerHTML = '<div class="plaza-loading">⏳ 加载中...</div>';
-
-  try {
-    var factory = new ethers.Contract(TOKEN_PLAZA_FACTORY, FACTORY_ABI, provider);
-    var count = await factory.getDeployedCount();
-    var total = count.toNumber();
-
-    if(total === 0){
-      liveBody.innerHTML = '<div class="plaza-empty">还没有代币，去部署第一个吧 🚀</div>';
-      doneBody.innerHTML = '<div class="plaza-empty">等待 Mint 打满...</div>';
-      return;
-    }
-
-    // 批量获取所有代币地址
-    var addrs = [];
-    for(var i = 0; i < total; i++){
-      addrs.push(await factory.getDeployedToken(i));
-    }
-    // 反转：最新部署的在前
-    addrs.reverse();
-
-    // 并行查询每个代币的基本信息
-    var liveCards = [];
-    var doneCards = [];
-
-    for(var j = 0; j < addrs.length; j++){
-      try {
-        var token = new ethers.Contract(addrs[j], CONTRACT_DATA.ABI, provider);
-        var results = await Promise.all([
-          token.name().catch(function(){ return 'Unknown'; }),
-          token.symbol().catch(function(){ return '???'; }),
-          token.presaleActive().catch(function(){ return null; }),
-          token.fillAmountBNB().catch(function(){ return ethers.BigNumber.from(0); }),
-          token.totalBNBCollected().catch(function(){ return ethers.BigNumber.from(0); })
-        ]);
-        var tName = results[0];
-        var tSymbol = results[1];
-        var isActive = results[2];
-        var fillBNB = results[3];
-        var collectedBNB = results[4];
-
-        var card = {
-          addr: addrs[j],
-          name: tName,
-          symbol: tSymbol,
-          active: isActive,
-          fill: parseFloat(ethers.utils.formatEther(fillBNB)),
-          collected: parseFloat(ethers.utils.formatEther(collectedBNB))
-        };
-
-        if(isActive === true || (isActive !== false && card.collected < card.fill && card.fill > 0)){
-          liveCards.push(card);
-        } else {
-          doneCards.push(card);
-        }
-      } catch(e2){
-        // 跳过读取失败的代币
-        console.warn('读取代币失败:', addrs[j], e2.message);
-      }
-    }
-
-    // 渲染
-    renderPlazaCards(liveBody, liveCards, 'live');
-    renderPlazaCards(doneBody, doneCards, 'done');
-  } catch(e){
-    console.error('加载代币广场失败:', e);
-    liveBody.innerHTML = '<div class="plaza-empty">⚠️ 加载失败: ' + (e.reason || e.message) + '</div>';
-    doneBody.innerHTML = '<div class="plaza-empty">⚠️ 加载失败</div>';
-  }
-}
-
-function renderPlazaCards(container, cards, type){
-  if(cards.length === 0){
-    container.innerHTML = '<div class="plaza-empty">' + (type === 'live' ? '暂无正在发射的代币' : '暂无已完成的代币') + '</div>';
-    return;
-  }
-  var html = '';
-  for(var i = 0; i < cards.length; i++){
-    var c = cards[i];
-    var shortAddr = c.addr.slice(0,6) + '...' + c.addr.slice(-4);
-    var pct = c.fill > 0 ? Math.min(100, (c.collected / c.fill) * 100) : 0;
-    var progClass = type === 'live' ? 'live' : 'done';
-    var shortName = c.name.length > 12 ? c.name.slice(0,12)+'...' : c.name;
-    html += '<div class="plaza-card" onclick="openAdminPanelByAddress(\'' + c.addr + '\')" title="点击管理此合约">';
-    html += '<div class="plaza-card-top">';
-    html += '<div class="plaza-card-icon">' + (c.symbol || '?').slice(0,2).toUpperCase() + '</div>';
-    html += '<div>';
-    html += '<div class="plaza-card-name">' + escHtml(shortName) + '</div>';
-    html += '<div class="plaza-card-symbol">$' + escHtml(c.symbol || '???') + '</div>';
-    html += '</div></div>';
-    html += '<div class="plaza-card-addr">' + shortAddr + '</div>';
-    html += '<div class="plaza-card-progress">';
-    html += '<div class="plaza-progress-bar"><div class="plaza-progress-fill ' + progClass + '" style="width:' + pct.toFixed(1) + '%"></div></div>';
-    html += '<div class="plaza-progress-text"><span>' + c.collected.toFixed(4) + ' BNB</span><span>' + c.fill.toFixed(4) + ' BNB</span></div>';
-    html += '</div></div>';
-  }
-  container.innerHTML = html;
-}
-
-function escHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 </script>
