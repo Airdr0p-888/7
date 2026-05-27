@@ -835,38 +835,50 @@
     }
   }
 
-  /* 通过 TokenDeployed 事件过滤指定部署者的代币地址（最新在前） */
+  /* 通过 TokenDeployed 事件过滤指定部署者的代币地址（最新在前）
+     策略：先合约调用极速查 count，有代币才扫事件；事件查询从近期开始，减少扫描量 */
   async function getDeployerTokens(provider, factoryAddr, deployerAddr){
+    // ① 快速检查工厂是否有任何代币（1 次 RPC，毫秒级）
+    var factory = new ethers.Contract(factoryAddr, FACTORY_ABI, provider);
+    var count;
+    try {
+      count = await factory.getDeployedCount();
+      if(count.toNumber() === 0) return [];
+    } catch(e){ /* getDeployedCount 失败，继续走事件 */ }
+
+    // ② 事件查询：只扫近 90 天（~2.6M 块，BSC 3s/块），避免全链扫描
     var eventSig = ethers.utils.id('TokenDeployed(address,bytes32,address)');
     var deployerTopic = ethers.utils.hexZeroPad(deployerAddr, 32);
+    var currentBlock = await provider.getBlockNumber();
+    // 近 90 天 ≈ 2,592,000 块，取整 3000000
+    var lookback = 3000000;
+    var fromBlock = Math.max(0, currentBlock - lookback);
 
     var logs = [];
-    // 先尝试全量查询
     try {
       logs = await provider.getLogs({
         address: factoryAddr,
         topics: [eventSig, null, deployerTopic],
-        fromBlock: '0x0',
+        fromBlock: '0x' + fromBlock.toString(16),
         toBlock: 'latest'
       });
     } catch(eFull){
-      // RPC 限制块范围，分块查询（每次 4000 块）
-      console.warn('全量查询失败，切换到分块模式:', eFull.message);
+      // RPC 限制块范围，分块查询（每次 3000 块）
+      console.warn('事件查询失败，切换到分块模式:', eFull.message);
       try {
-        var currentBlock = await indexProvider.getBlockNumber();
-        var chunkSize = 4000;
-        for(var fromBlock = 0; fromBlock <= currentBlock; fromBlock += chunkSize){
-          var toBlock = Math.min(fromBlock + chunkSize - 1, currentBlock);
+        var chunkSize = 3000;
+        for(var fb = fromBlock; fb <= currentBlock; fb += chunkSize){
+          var tb = Math.min(fb + chunkSize - 1, currentBlock);
           try {
             var chunkLogs = await provider.getLogs({
               address: factoryAddr,
               topics: [eventSig, null, deployerTopic],
-              fromBlock: '0x' + fromBlock.toString(16),
-              toBlock: '0x' + toBlock.toString(16)
+              fromBlock: '0x' + fb.toString(16),
+              toBlock: '0x' + tb.toString(16)
             });
             logs = logs.concat(chunkLogs);
           } catch(eChunk){
-            console.warn('分块 ' + fromBlock + '-' + toBlock + ' 失败:', eChunk.message);
+            console.warn('分块 ' + fb + '-' + tb + ' 失败:', eChunk.message);
           }
         }
       } catch(e2){
@@ -874,11 +886,9 @@
       }
     }
 
-    // 从事件中提取 token 地址，按区块号降序（最新在前）
+    // ③ 从事件中提取 token 地址，按区块号降序（最新在前）
     var addrs = [];
     for(var k = 0; k < logs.length; k++){
-      // TokenDeployed(address indexed token, bytes32 salt, address indexed deployer)
-      // token 在 topic[1]
       var addr = '0x' + logs[k].topics[1].slice(26);
       addrs.push({ addr: addr, block: logs[k].blockNumber });
     }
