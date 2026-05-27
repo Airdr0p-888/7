@@ -676,6 +676,8 @@
 
   // ★ 唯一硬编码工厂地址（BSC 主网），不读取其他来源
   var FACTORY_ADDR_HARDCODED = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
+  // ★ 只显示该钱包部署的代币
+  var DEPLOYER_WALLET = '0x2aF55B34E616dCe99230fC8C694a6E6fFdF79e5b';
 
   // 公共 BSC RPC（不需要钱包）
   var BSC_RPC_LIST = [
@@ -767,11 +769,11 @@
     }
 
     try {
-      // ★ 只用硬编码工厂，不使用任何其他地址
-      var factory = new ethers.Contract(FACTORY_ADDR_HARDCODED, FACTORY_ABI, indexProvider);
-      var count = await factory.getDeployedCount();
-      var total = count.toNumber();
-      if(total === 0){
+      // ★ 通过 TokenDeployed 事件按部署者钱包过滤
+      var addrs = await getDeployerTokens(indexProvider, FACTORY_ADDR_HARDCODED, DEPLOYER_WALLET);
+      // addrs 已按最新在前排列
+
+      if(addrs.length === 0){
         liveBody.innerHTML = '<div class="col-empty">🚀 暂无发射中的代币<br/><a href="launch.html" style="color:var(--accent2)">去发射第一个</a></div>';
         doneBody.innerHTML = '<div class="col-empty">暂无已完成的代币</div>';
         if(cntLive) cntLive.textContent = '0';
@@ -779,11 +781,6 @@
         updateStats(0, 0, 0);
         return;
       }
-
-      // 批量获取所有地址
-      var addrs = [];
-      for(var i = 0; i < total; i++){ addrs.push(await factory.getDeployedToken(i)); }
-      addrs.reverse(); // 最新在前
 
       allTokensCache = [];
       var doneCount = 0;
@@ -829,13 +826,64 @@
           });
         } catch(e2){ console.warn('读取代币失败:', addrs[j], e2.message); }
       }
-      updateStats(total, totalRaised.toFixed(2), doneCount);
+      updateStats(addrs.length, totalRaised.toFixed(2), doneCount);
       renderTokenCols();
     } catch(e){
       console.error('加载代币失败:', e);
       liveBody.innerHTML = '<div class="col-empty">⚠️ 加载失败<br/><span style="font-size:.75rem">' + (e.reason || e.message) + '</span></div>';
       doneBody.innerHTML = '<div class="col-empty">⚠️ 加载失败</div>';
     }
+  }
+
+  /* 通过 TokenDeployed 事件过滤指定部署者的代币地址（最新在前） */
+  async function getDeployerTokens(provider, factoryAddr, deployerAddr){
+    var eventSig = ethers.utils.id('TokenDeployed(address,bytes32,address)');
+    var deployerTopic = ethers.utils.hexZeroPad(deployerAddr, 32);
+
+    var logs = [];
+    // 先尝试全量查询
+    try {
+      logs = await provider.getLogs({
+        address: factoryAddr,
+        topics: [eventSig, null, deployerTopic],
+        fromBlock: '0x0',
+        toBlock: 'latest'
+      });
+    } catch(eFull){
+      // RPC 限制块范围，分块查询（每次 4000 块）
+      console.warn('全量查询失败，切换到分块模式:', eFull.message);
+      try {
+        var currentBlock = await indexProvider.getBlockNumber();
+        var chunkSize = 4000;
+        for(var fromBlock = 0; fromBlock <= currentBlock; fromBlock += chunkSize){
+          var toBlock = Math.min(fromBlock + chunkSize - 1, currentBlock);
+          try {
+            var chunkLogs = await provider.getLogs({
+              address: factoryAddr,
+              topics: [eventSig, null, deployerTopic],
+              fromBlock: '0x' + fromBlock.toString(16),
+              toBlock: '0x' + toBlock.toString(16)
+            });
+            logs = logs.concat(chunkLogs);
+          } catch(eChunk){
+            console.warn('分块 ' + fromBlock + '-' + toBlock + ' 失败:', eChunk.message);
+          }
+        }
+      } catch(e2){
+        throw new Error('RPC 日志查询不可用: ' + e2.message);
+      }
+    }
+
+    // 从事件中提取 token 地址，按区块号降序（最新在前）
+    var addrs = [];
+    for(var k = 0; k < logs.length; k++){
+      // TokenDeployed(address indexed token, bytes32 salt, address indexed deployer)
+      // token 在 topic[1]
+      var addr = '0x' + logs[k].topics[1].slice(26);
+      addrs.push({ addr: addr, block: logs[k].blockNumber });
+    }
+    addrs.sort(function(a, b){ return b.block - a.block; });
+    return addrs.map(function(x){ return x.addr; });
   }
 
   function renderTokenCols(){
