@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>莫大 MODA MINT — 4发射代币</title>
+  <title>熊猫 PANDA MINT — 发射代币</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -443,17 +443,35 @@
 <header>
   <nav>
     <a class="logo" href="index.html">
-      <img src="logo.png" class="logo-icon-img" />
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="logo-icon-img" style="flex-shrink:0;animation:float 4s ease-in-out infinite">
+        <ellipse cx="50" cy="62" rx="30" ry="26" fill="#fff" stroke="#222" stroke-width="3"/>
+        <ellipse cx="50" cy="36" rx="24" ry="22" fill="#fff" stroke="#222" stroke-width="3"/>
+        <ellipse cx="30" cy="18" rx="10" ry="10" fill="#222"/>
+        <ellipse cx="30" cy="18" rx="5.5" ry="5.5" fill="#555"/>
+        <ellipse cx="70" cy="18" rx="10" ry="10" fill="#222"/>
+        <ellipse cx="70" cy="18" rx="5.5" ry="5.5" fill="#555"/>
+        <ellipse cx="40" cy="34" rx="9" ry="8" fill="#222"/>
+        <ellipse cx="60" cy="34" rx="9" ry="8" fill="#222"/>
+        <ellipse cx="40" cy="34" rx="5" ry="5" fill="#fff"/>
+        <ellipse cx="60" cy="34" rx="5" ry="5" fill="#fff"/>
+        <circle cx="41" cy="34" r="2.5" fill="#222"/>
+        <circle cx="61" cy="34" r="2.5" fill="#222"/>
+        <ellipse cx="50" cy="43" rx="4" ry="2.5" fill="#555"/>
+        <path d="M44 48 Q50 54 56 48" stroke="#222" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="50" cy="64" rx="16" ry="13" fill="#f5f5f5"/>
+        <ellipse cx="22" cy="68" rx="8" ry="6" fill="#fff" stroke="#222" stroke-width="2.5" transform="rotate(-20,22,68)"/>
+        <ellipse cx="78" cy="68" rx="8" ry="6" fill="#fff" stroke="#222" stroke-width="2.5" transform="rotate(20,78,68)"/>
+      </svg>
       <span>
-        <span class="logo-text-en">MODA MINT</span>
-        <span class="logo-text-cn">莫大发射平台</span>
+        <span class="logo-text-en">PANDA MINT</span>
+        <span class="logo-text-cn">熊猫发射平台</span>
       </span>
     </a>
     <div class="nav-right">
       <span id="wallet-addr-display" class="wallet-addr" style="display:none"></span>
       <button class="btn btn-outline-purple" id="btn-connect" onclick="connectWallet()">连接钱包 📡</button>
       <button class="btn btn-ghost" id="btn-admin-nav" onclick="openAdminPanelByAddress()" style="display:none;border:1px solid rgba(124,58,237,.4);color:var(--accent2)">🛡️ 管理合约</button>
-      <button class="btn btn-ghost" onclick="alert('直播功能即将上线')">开通直播</button>
+
     </div>
   </nav>
 </header>
@@ -727,19 +745,19 @@
     <div class="link-grid">
       <div class="link-input-wrap">
         <span class="link-icon">🌐</span>
-        <input type="url" placeholder="官网地址 https://..." />
+        <input type="url" id="link-website" placeholder="官网地址 https://..." />
       </div>
       <div class="link-input-wrap">
         <span class="link-icon">𝕏</span>
-        <input type="url" placeholder="X (Twitter) 链接 https://x.com/..." />
+        <input type="url" id="link-twitter" placeholder="X (Twitter) 链接 https://x.com/..." />
       </div>
       <div class="link-input-wrap">
         <span class="link-icon">✈️</span>
-        <input type="url" placeholder="Telegram 群链接 https://t.me/..." />
+        <input type="url" id="link-telegram" placeholder="Telegram 群链接 https://t.me/..." />
       </div>
       <div class="link-input-wrap">
         <span class="link-icon">💬</span>
-        <input type="url" placeholder="Discord 链接 https://discord.gg/..." />
+        <input type="url" id="link-discord" placeholder="Discord 链接 https://discord.gg/..." />
       </div>
     </div>
   </div>
@@ -1415,13 +1433,34 @@ function buildParamsPreview(p, vanityResult, gasBNB){
 /* ─── 主流程 ─── */
 /* ─── Vercel 云端存储 ─── */
 async function saveTokenToCloud(contractAddr, name, symbol, deployTxHash){
+  // 获取封面图片 base64
+  var imgData = '';
+  var previewImg = document.getElementById('preview-img');
+  if(previewImg && previewImg.src && previewImg.src.startsWith('data:')){
+    imgData = previewImg.src;
+  }
+  // 获取代币描述
+  var desc = (document.getElementById('token-desc').value || '').trim();
+
+  // 获取社交链接
+  var links = {
+    website: (document.getElementById('link-website').value || '').trim(),
+    twitter: (document.getElementById('link-twitter').value || '').trim(),
+    telegram: (document.getElementById('link-telegram').value || '').trim(),
+    discord: (document.getElementById('link-discord').value || '').trim()
+  };
+
   var payload = {
     a: contractAddr,
     n: name,
     s: symbol,
     d: currentAccount,
     t: Math.floor(Date.now() / 1000),
-    h: deployTxHash
+    h: deployTxHash,
+    img: imgData,
+    desc: desc,
+    links: links,
+    wl: document.getElementById('whitelist-mint').checked ? 1 : 0
   };
   var resp = await fetch(API_BASE + '/api/tokens', {
     method: 'POST',
@@ -2467,7 +2506,9 @@ async function adminSetWhitelist(add) {
   if (!confirm('确认将 ' + addresses.length + ' 个地址' + action + '白名单？')) return;
   try {
     adminLog('⏳ ' + action + ' ' + addresses.length + ' 个地址到白名单...');
-    const tx = await _adminContract.setMintWhitelist(addresses, add);
+    const tx = add
+      ? await _adminContract.addWhitelist(addresses)
+      : await _adminContract.removeWhitelist(addresses);
     adminLog('📤 TX: ' + tx.hash.slice(0, 12) + '...');
     await tx.wait();
     adminLog('✅ 已' + action + ' ' + addresses.length + ' 个地址');

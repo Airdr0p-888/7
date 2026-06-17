@@ -1,5 +1,7 @@
 {
+  "name": "moda-token-registry",
+  "private": true,
   "dependencies": {
-    "solc": "^0.8.20"
+    "@upstash/redis": "^1.34.0"
   }
 }
