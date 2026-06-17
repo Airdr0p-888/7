@@ -108,16 +108,17 @@
 
     /* 状态指示 */
     .status-grid {
-      display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px;
+      display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:28px;
     }
     .status-item {
       background:var(--bg-input); border:1px solid var(--border);
       border-radius:10px; padding:14px 16px; text-align:center;
     }
     .status-label { font-size:.78rem; color:var(--text-muted); margin-bottom:4px; }
-    .status-value { font-size:1.1rem; font-weight:800; color:var(--accent1); }
+    .status-value { font-size:1.05rem; font-weight:800; color:var(--accent1); }
     .status-value.danger { color:var(--danger); }
     .status-value.success { color:var(--success); }
+    .status-value.warning { color:var(--accent3); }
 
     /* 进度条 */
     .progress-wrap { margin-bottom:28px; }
@@ -144,6 +145,24 @@
     .mint-info-row + .mint-info-row { border-top:1px solid rgba(124,58,237,.08); }
     .mint-info-label { font-size:.85rem; color:var(--text-muted); }
     .mint-info-value { font-size:.9rem; font-weight:700; color:var(--text-main); }
+
+    /* 白名单提示 */
+    .whitelist-notice {
+      display:none; align-items:center; gap:10px;
+      border-radius:10px; padding:14px 16px; margin-bottom:24px;
+      font-size:.85rem;
+    }
+    .whitelist-notice.show { display:flex; }
+    .whitelist-notice.is-whitelisted {
+      background:rgba(21,128,61,.06); border:1px solid rgba(21,128,61,.2); color:var(--success);
+    }
+    .whitelist-notice.not-whitelisted {
+      background:rgba(220,38,38,.06); border:1px solid rgba(220,38,38,.2); color:var(--danger);
+    }
+    .whitelist-notice.open-mint {
+      background:rgba(13,148,136,.06); border:1px solid rgba(13,148,136,.2); color:var(--accent1);
+    }
+    .whitelist-notice-icon { font-size:1.2rem; flex-shrink:0; }
 
     /* 限制提示 */
     .limit-notice {
@@ -333,9 +352,19 @@
           <div class="status-value" id="status-presale">加载中...</div>
         </div>
         <div class="status-item">
-          <div class="status-label">你的 Mint 状态</div>
+          <div class="status-label">白名单状态</div>
+          <div class="status-value" id="status-whitelist">加载中...</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">你的 Mint</div>
           <div class="status-value" id="status-minted">加载中...</div>
         </div>
+      </div>
+
+      <!-- 白名单提示横幅 -->
+      <div class="whitelist-notice" id="whitelist-notice">
+        <span class="whitelist-notice-icon" id="whitelist-icon">🔒</span>
+        <span id="whitelist-text">检测白名单状态中...</span>
       </div>
 
       <!-- 进度 -->
@@ -378,7 +407,7 @@
       </div>
 
       <!-- 限制提示 -->
-      <div class="limit-notice">
+      <div class="limit-notice" id="limit-notice">
         <span class="limit-notice-icon">⚠️</span>
         <span>每个钱包地址限 Mint 一次，重复钱包将被拦截，请勿重复操作</span>
       </div>
@@ -465,7 +494,6 @@ async function connectWallet(){
           method:'wallet_switchEthereumChain',
           params:[{chainId:BSC_CHAIN_ID_HEX}]
         });
-        // 切换后重新初始化
         provider = new ethers.providers.Web3Provider(window.ethereum);
         signer = provider.getSigner();
       }catch(e){
@@ -511,8 +539,10 @@ async function refreshStatus(){
   if(!tokenContract || !userAddress) return;
 
   try{
-    const [presaleActive, mintedAmt, mintCost, fillAmt, collected, name_, symbol_, tokensPerMint, totalSupply_] = await Promise.all([
+    const [presaleActive, whitelistMintOnly, isWhitelisted, mintedAmt, mintCost, fillAmt, collected, name_, symbol_, tokensPerMint] = await Promise.all([
       tokenContract.presaleActive(),
+      tokenContract.whitelistMintOnly(),
+      tokenContract.whitelist(userAddress),
       tokenContract.mintedAmount(userAddress),
       tokenContract.mintCostBNB(),
       tokenContract.fillAmountBNB(),
@@ -520,10 +550,9 @@ async function refreshStatus(){
       tokenContract.name(),
       tokenContract.symbol(),
       tokenContract.tokensPerMint(),
-      tokenContract.totalSupply(),
     ]);
 
-    // 预售状态
+    // ===== 预售状态 =====
     const presaleEl = document.getElementById('status-presale');
     if(presaleActive){
       presaleEl.textContent='进行中 🟢';
@@ -533,23 +562,52 @@ async function refreshStatus(){
       presaleEl.className='status-value danger';
     }
 
-    // Mint 状态
+    // ===== 白名单状态 =====
+    const whitelistEl = document.getElementById('status-whitelist');
+    const whitelistNotice = document.getElementById('whitelist-notice');
+    const whitelistIcon = document.getElementById('whitelist-icon');
+    const whitelistText = document.getElementById('whitelist-text');
+
+    if(!whitelistMintOnly){
+      // 开放 Mint，不需要白名单
+      whitelistEl.textContent='开放 Mint 🟢';
+      whitelistEl.className='status-value success';
+      whitelistNotice.className='whitelist-notice show open-mint';
+      whitelistIcon.textContent='🌐';
+      whitelistText.textContent='当前为开放 Mint 模式，所有钱包均可参与';
+    }else if(isWhitelisted){
+      // 白名单模式 + 在名单内
+      whitelistEl.textContent='已加入 ✅';
+      whitelistEl.className='status-value success';
+      whitelistNotice.className='whitelist-notice show is-whitelisted';
+      whitelistIcon.textContent='✅';
+      whitelistText.textContent='白名单 Mint 模式 — 你的钱包已在白名单中，可以参与 Mint';
+    }else{
+      // 白名单模式 + 不在名单内
+      whitelistEl.textContent='未加入 ❌';
+      whitelistEl.className='status-value danger';
+      whitelistNotice.className='whitelist-notice show not-whitelisted';
+      whitelistIcon.textContent='🚫';
+      whitelistText.textContent='白名单 Mint 模式 — 你的钱包不在白名单中，无法 Mint！请联系项目方添加';
+    }
+
+    // ===== Mint 状态 =====
     const mintedEl = document.getElementById('status-minted');
     const hasMinted = mintedAmt.gt(0);
     if(hasMinted){
       mintedEl.textContent='已 Mint 🟡';
-      mintedEl.className='status-value danger';
+      mintedEl.className='status-value warning';
     }else{
       mintedEl.textContent='未 Mint 🟢';
       mintedEl.className='status-value success';
     }
 
-    // 进度
+    // ===== 进度 =====
     const pct = fillAmt.gt(0) ? collected.mul(10000).div(fillAmt).toNumber()/100 : 0;
     document.getElementById('progress-pct').textContent = pct.toFixed(1)+'%';
     document.getElementById('progress-fill').style.width = Math.min(pct,100)+'%';
 
-    // 信息
+    // ===== 信息 =====
     document.getElementById('info-name').textContent = name_;
     document.getElementById('info-symbol').textContent = symbol_;
     document.getElementById('info-cost').textContent = ethers.utils.formatEther(mintCost)+' BNB';
@@ -557,13 +615,13 @@ async function refreshStatus(){
     document.getElementById('info-fill').textContent = ethers.utils.formatEther(fillAmt)+' BNB';
     document.getElementById('info-collected').textContent = ethers.utils.formatEther(collected)+' BNB';
 
-    // 控制 UI
+    // ===== 控制 UI =====
     const alreadyMinted = document.getElementById('already-minted');
     const presaleEnded = document.getElementById('presale-ended');
     const mintBtn = document.getElementById('btn-mint');
     const mintBtnWrap = document.getElementById('mint-btn-wrap');
     const mintHint = document.getElementById('mint-hint');
-    const limitNotice = document.querySelector('.limit-notice');
+    const limitNotice = document.getElementById('limit-notice');
 
     alreadyMinted.classList.remove('show');
     presaleEnded.classList.remove('show');
@@ -582,10 +640,16 @@ async function refreshStatus(){
         '你已获得 '+ethers.utils.formatEther(mintedAmt)+' '+symbol_;
       mintBtnWrap.style.display='none';
       limitNotice.style.display='none';
+    }else if(whitelistMintOnly && !isWhitelisted){
+      // 白名单模式但不在白名单内 → 按钮禁用 + 提示
+      mintBtn.disabled = true;
+      mintBtn.textContent = '🚫 未在白名单中';
+      mintHint.textContent = '你的钱包不在白名单中，请联系项目方添加后再试';
     }else{
       // 可以 mint
-      mintBtn.disabled=false;
-      mintHint.textContent='点击上方按钮参与 Mint，单钱包仅限一次';
+      mintBtn.disabled = false;
+      mintBtn.textContent = '🐼 立即 Mint';
+      mintHint.textContent = '点击上方按钮参与 Mint，单钱包仅限一次';
     }
 
   }catch(e){
@@ -607,7 +671,7 @@ async function doMint(){
   try{
     const mintCost = await tokenContract.mintCostBNB();
 
-    // 再次前端校验：检查是否已 mint
+    // 前端二次校验：已 mint？
     const mintedAmt = await tokenContract.mintedAmount(userAddress);
     if(mintedAmt.gt(0)){
       closeModal();
@@ -616,11 +680,23 @@ async function doMint(){
       return;
     }
 
-    // 再次前端校验：预售是否还在
+    // 前端二次校验：预售还在？
     const presaleActive = await tokenContract.presaleActive();
     if(!presaleActive){
       closeModal();
       alert('预售已结束！');
+      await refreshStatus();
+      return;
+    }
+
+    // 前端二次校验：白名单？
+    const [wlOnly, isWl] = await Promise.all([
+      tokenContract.whitelistMintOnly(),
+      tokenContract.whitelist(userAddress),
+    ]);
+    if(wlOnly && !isWl){
+      closeModal();
+      alert('你的钱包不在白名单中，无法 Mint！');
       await refreshStatus();
       return;
     }
@@ -637,8 +713,18 @@ async function doMint(){
     await refreshStatus();
   }catch(e){
     console.error('Mint 失败:', e);
-    const msg = e.reason || e.message || '未知错误';
-    updateModal('❌', 'Mint 失败', msg.length>120?msg.slice(0,120)+'...':msg, false);
+    let msg = '未知错误';
+    if(e.reason) msg = e.reason;
+    else if(e.message){
+      // 尝试从 MetaMask 错误中提取有用信息
+      if(e.message.includes('Not whitelisted')) msg = '你的钱包不在白名单中';
+      else if(e.message.includes('Presale not active')) msg = '预售已结束';
+      else if(e.message.includes('Presale full')) msg = '预售已满';
+      else if(e.message.includes('Invalid BNB amount')) msg = '发送的 BNB 数量不正确';
+      else if(e.message.includes('user rejected')) msg = '你取消了交易';
+      else msg = e.message.length>120 ? e.message.slice(0,120)+'...' : e.message;
+    }
+    updateModal('❌', 'Mint 失败', msg, false);
     mintBtn.disabled = false;
     mintBtn.textContent = '🐼 立即 Mint';
   }
@@ -677,9 +763,14 @@ function closeModal(){
   const addr = params.get('contract');
   if(addr && ethers && ethers.utils && ethers.utils.isAddress(addr)){
     document.getElementById('contract-address').value = addr;
-    // 等 ethers 和 DOM 就绪后自动加载
     window.addEventListener('load', function(){
-      if(window.ethereum) loadContract();
+      if(window.ethereum){
+        loadContract();
+      }else{
+        // 没有 MetaMask 时提示
+        const hint = document.querySelector('.contract-input-hint');
+        if(hint) hint.textContent = '检测到合约地址，但请先安装 MetaMask 钱包后才能使用';
+      }
     });
   }
 })();
