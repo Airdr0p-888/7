@@ -240,7 +240,9 @@
     showMsg("钱包已连接：" + address, "ok");
   }
 
-  // 扫码是唯一默认入口：点「连接币安 AI 钱包」直接弹二维码（先 Agentic，失败退化 WalletConnect）
+  // 扫码是唯一默认入口：点「连接币安 AI 钱包」直接弹二维码
+  // 站点域名已加入 Agentic 后端 Origin 白名单，优先走 Agentic Wallet 扫码；
+  // 若后端偶发不可用，自动退化 WalletConnect 扫码（兜底）。
   function connect() {
     connectAgenticRoute();
   }
