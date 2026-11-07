@@ -57,45 +57,44 @@
     }
   }
 
-  /* ---------- 熊猫主题漂浮背景（竹叶/脚印/熊猫） ---------- */
+  /* ---------- 熊猫马赛克漂浮背景（方块瓦片） ---------- */
   function initPandaBg() {
     const cv = $("pandaBg");
     if (!cv) return;
     const ctx = cv.getContext("2d");
-    let w, h, items;
-    const glyphs = ["🎋", "🐾", "🐼", "🍃"];
+    let w, h, tiles;
+    const colors = ["#7ee08f", "#c9ffb8", "#ffffff", "#ff9ec4", "#1b1b1b"];
     function resize() {
       w = cv.width = window.innerWidth;
       h = cv.height = window.innerHeight;
-      const n = Math.min(42, Math.floor(w / 26));
-      items = Array.from({ length: n }, () => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: 20 + Math.random() * 22,
-        s: 0.3 + Math.random() * 0.9,
-        d: (Math.random() - 0.5) * 0.6,
-        a: 0.16 + Math.random() * 0.28,
-        g: glyphs[Math.floor(Math.random() * glyphs.length)],
+      const n = Math.min(46, Math.floor(w / 22));
+      tiles = Array.from({ length: n }, () => ({
+        x: Math.random() * w, y: Math.random() * h,
+        s: 12 + Math.random() * 30,
+        sp: 0.2 + Math.random() * 0.7,
+        dx: (Math.random() - 0.5) * 0.5,
+        a: 0.10 + Math.random() * 0.18,
+        c: colors[Math.floor(Math.random() * colors.length)],
         rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.012,
       }));
     }
     function draw() {
       ctx.clearRect(0, 0, w, h);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      for (const f of items) {
-        f.y += f.s;
-        f.x += f.d;
-        f.rot += 0.003;
-        if (f.y > h + 30) { f.y = -30; f.x = Math.random() * w; }
-        if (f.x > w + 30) f.x = -30;
-        if (f.x < -30) f.x = w + 30;
+      for (const t of tiles) {
+        t.y += t.sp; t.x += t.dx; t.rot += t.vr;
+        if (t.y > h + 40) { t.y = -40; t.x = Math.random() * w; }
+        if (t.x > w + 40) t.x = -40;
+        if (t.x < -40) t.x = w + 40;
         ctx.save();
-        ctx.globalAlpha = f.a;
-        ctx.translate(f.x, f.y);
-        ctx.rotate(f.rot);
-        ctx.font = f.r + "px serif";
-        ctx.fillText(f.g, 0, 0);
+        ctx.globalAlpha = t.a;
+        ctx.translate(t.x, t.y);
+        ctx.rotate(t.rot);
+        ctx.fillStyle = t.c;
+        ctx.fillRect(-t.s / 2, -t.s / 2, t.s, t.s);
+        ctx.strokeStyle = "rgba(0,0,0,0.18)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-t.s / 2, -t.s / 2, t.s, t.s);
         ctx.restore();
       }
       requestAnimationFrame(draw);

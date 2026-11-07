@@ -1,174 +1,1106 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>🐼 熊猫铸造 · V4 Mint</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
-  <meta name="agent-wallet-api" content="https://agent-ai-agentic-wallet.onrender.com/api/agent-wallet" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>熊猫铸造 · V4 Mint</title>
+<meta name="agent-wallet-api" content="https://agent-ai-agentic-wallet.onrender.com/api/agent-wallet" />
+<meta name="description" content="BSC V4 公平铸造 · 铸造资金直达 LP 底池，达标自动开盘并放弃权限。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23080d0a'/%3E%3Ccircle cx='9' cy='9' r='5.5' fill='%23232B29'/%3E%3Ccircle cx='23' cy='9' r='5.5' fill='%23232B29'/%3E%3Ccircle cx='16' cy='17.5' r='11' fill='%23F0ECE0'/%3E%3Ccircle cx='12' cy='15.5' r='3.4' fill='%231B211F'/%3E%3Ccircle cx='20' cy='15.5' r='3.4' fill='%231B211F'/%3E%3Ccircle cx='16' cy='21' r='2.2' fill='%231B211F'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://miaoda.feishu.cn" />
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --ink:#060a08;
+  --ink-2:#080d0a;
+  --panel:#0c1411;
+  --panel-2:#101a15;
+  --line:rgba(214,255,232,.13);
+  --line-soft:rgba(214,255,232,.07);
+  --mint:#6FE08D;
+  --mint-2:#B9FFCB;
+  --jade:#2F7E5B;
+  --bone:#E9E7DC;
+  --text:#E6EFE8;
+  --muted:#93A79A;
+  --pink:#F0A0B8;
+  --danger:#FF9494;
+  --sans:"Noto Sans SC","Space Grotesk",system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --radius:20px;
+  --maxw:1180px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::after{
+  content:"";
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 78% -8%,rgba(111,224,141,.13),transparent 62%),
+    radial-gradient(720px 460px at 4% 6%,rgba(47,126,91,.18),transparent 60%),
+    linear-gradient(180deg,#060a08 0%,#070d0a 45%,#050806 100%);
+}
+img,svg{max-width:100%}
+a{color:inherit}
+button{font:inherit}
+.hidden{display:none!important}
+
+/* 背景层 */
+#pandaBg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.55;
+  -webkit-mask-image:radial-gradient(130% 100% at 50% 0%,#000 10%,transparent 78%);
+  mask-image:radial-gradient(130% 100% at 50% 0%,#000 10%,transparent 78%)}
+.pixgrid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(var(--line-soft) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+  background-size:34px 34px;
+  opacity:.85;
+  -webkit-mask-image:radial-gradient(120% 80% at 50% 0%,#000 12%,transparent 76%);
+  mask-image:radial-gradient(120% 80% at 50% 0%,#000 12%,transparent 76%);
+}
+
+/* ================= 顶栏 ================= */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:rgba(6,10,8,.78);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  backdrop-filter:blur(16px) saturate(140%);
+  border-bottom:1px solid var(--line-soft);
+}
+.topbar-in{
+  max-width:var(--maxw);margin:0 auto;padding:14px 24px;
+  display:flex;align-items:center;gap:24px;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{
+  width:42px;height:42px;flex:none;display:grid;place-items:center;
+  border:1px solid var(--line);border-radius:12px;
+  background:
+    linear-gradient(var(--line-soft) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line-soft) 1px,transparent 1px),
+    radial-gradient(circle at 50% 30%,#172620,#0a120e 72%);
+  background-size:7px 7px,7px 7px,100% 100%;
+}
+.logo svg{width:26px;height:26px}
+.brand-txt{min-width:0}
+.brand-txt h1{
+  margin:0;font-size:15px;font-weight:700;letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.brand-txt p{
+  margin:1px 0 0;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.16em;color:var(--muted);
+}
+.nav{display:none;align-items:center;gap:4px;margin-left:8px}
+.nav a{
+  font-size:13px;color:var(--muted);text-decoration:none;padding:8px 12px;border-radius:10px;
+  transition:color .18s,background .18s;
+}
+.nav a:hover{color:var(--text);background:rgba(214,255,232,.05)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.chain-chip{
+  display:none;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  border:1px solid var(--line-soft);border-radius:999px;padding:6px 11px;
+}
+.chain-chip i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint)}
+.wallet-pill{
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:7px 12px;
+  max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@media(min-width:760px){.chain-chip{display:inline-flex}}
+@media(min-width:1000px){.nav{display:flex}}
+
+/* ================= 按钮 ================= */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:11px 18px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--line);background:rgba(214,255,232,.04);
+  color:var(--text);font-size:14px;font-weight:600;text-decoration:none;
+  transition:transform .16s ease,background .18s,border-color .18s,box-shadow .18s;
+}
+.btn:hover{border-color:rgba(185,255,203,.4);background:rgba(111,224,141,.09);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary{
+  background:linear-gradient(180deg,var(--mint-2),var(--mint));
+  color:#03150b;border-color:rgba(255,255,255,.5);
+  box-shadow:0 14px 30px -16px rgba(111,224,141,.85);
+}
+.btn-primary:hover{background:linear-gradient(180deg,#d5ffdf,var(--mint-2));color:#03150b}
+.btn-connect{
+  background:linear-gradient(180deg,var(--mint-2),var(--mint));
+  color:#03150b;border-color:rgba(255,255,255,.45);font-weight:700;
+}
+.btn-ghost{background:transparent}
+.btn-lg{padding:14px 20px;font-size:15px}
+.btn-block{width:100%}
+.btn svg{width:16px;height:16px;flex:none}
+
+/* ================= 布局 ================= */
+.shell{position:relative;z-index:2;max-width:var(--maxw);margin:0 auto;padding:0 24px 72px}
+
+/* ================= Hero ================= */
+.hero{display:grid;grid-template-columns:1fr;gap:34px;padding:44px 0 8px}
+.hero-copy{min-width:0}
+.live{
+  display:inline-flex;align-items:center;gap:9px;
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--muted);
+}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.86)}}
+.hero h1{
+  margin:20px 0 0;
+  font-size:clamp(38px,8vw,68px);
+  line-height:1.02;font-weight:700;letter-spacing:-.025em;
+}
+.hero h1 .sym{
+  display:inline-block;margin-top:16px;
+  font-family:var(--mono);font-size:.32em;font-weight:500;
+  letter-spacing:.22em;color:var(--mint);
+}
+.hero-sub{
+  margin:20px 0 0;max-width:44ch;
+  font-size:14.5px;line-height:1.8;color:var(--muted);
+}
+.hero-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.hbadge{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:12px;color:var(--text);
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;
+  background:rgba(214,255,232,.03);
+}
+.hbadge svg{width:13px;height:13px;color:var(--mint);flex:none}
+
+.addr{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:28px;padding:10px 12px;max-width:540px;
+  border:1px solid var(--line);border-radius:14px;background:rgba(12,20,17,.72);
+}
+.addr .tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mint);
+  border:1px solid rgba(111,224,141,.32);border-radius:999px;padding:3px 8px;flex:none;
+}
+.addr code{
+  font-family:var(--mono);font-size:12.5px;color:var(--bone);
+  min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.icon-btn{
+  width:34px;height:34px;flex:none;display:grid;place-items:center;
+  border:1px solid var(--line);border-radius:10px;background:transparent;cursor:pointer;
+  color:var(--muted);transition:color .18s,border-color .18s,background .18s;
+}
+.icon-btn:hover{color:var(--mint);border-color:rgba(111,224,141,.4);background:rgba(111,224,141,.08)}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+
+.hero-cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.micro-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:34px;
+  border-top:1px solid var(--line);
+}
+.micro-stats > div{padding:16px 0 0;min-width:0}
+.micro-stats .k{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);
+  display:block;margin-bottom:5px;
+}
+.micro-stats .v{
+  font-family:var(--mono);font-size:15px;color:var(--bone);
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:block;
+}
+
+/* Hero 徽记 */
+.emblem{
+  position:relative;isolation:isolate;
+  border:1px solid var(--line);border-radius:26px;
+  aspect-ratio:1 / .96;
+  background:
+    radial-gradient(80% 60% at 50% 8%,rgba(111,224,141,.16),transparent 62%),
+    linear-gradient(168deg,#0f1b15 0%,#070d0a 68%);
+  overflow:hidden;
+  display:grid;place-items:center;
+  box-shadow:0 40px 80px -50px rgba(0,0,0,.9),inset 0 1px 0 rgba(214,255,232,.08);
+}
+.emblem .grid-lines{
+  position:absolute;inset:0;z-index:0;
+  background-image:
+    linear-gradient(rgba(214,255,232,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(214,255,232,.08) 1px,transparent 1px);
+  background-size:38px 38px;
+  -webkit-mask-image:radial-gradient(72% 72% at 50% 46%,#000 20%,transparent 76%);
+  mask-image:radial-gradient(72% 72% at 50% 46%,#000 20%,transparent 76%);
+}
+.emblem .halo{
+  position:absolute;width:66%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,rgba(111,224,141,.24),transparent 66%);
+  filter:blur(4px);z-index:1;
+}
+.emblem .scan{
+  position:absolute;left:0;right:0;height:24%;z-index:3;
+  background:linear-gradient(180deg,transparent,rgba(185,255,203,.10) 45%,transparent);
+  animation:scan 7s linear infinite;pointer-events:none;
+}
+@keyframes scan{0%{top:-25%}100%{top:105%}}
+.emblem > svg.panda{position:relative;z-index:2;width:62%;filter:drop-shadow(0 22px 34px rgba(0,0,0,.6));animation:floatPanda 7s ease-in-out infinite}
+.emblem .plate{
+  position:absolute;z-index:1;width:76%;aspect-ratio:1;border-radius:50%;
+  border:1px solid rgba(233,231,220,.16);
+  background:radial-gradient(circle,rgba(233,231,220,.12),rgba(233,231,220,.03) 58%,transparent 72%);
+}
+@keyframes floatPanda{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-12px) rotate(1.5deg)}}
+.corner{position:absolute;width:16px;height:16px;border:1px solid rgba(185,255,203,.45);z-index:4}
+.corner.tl{top:16px;left:16px;border-right:0;border-bottom:0}
+.corner.tr{top:16px;right:16px;border-left:0;border-bottom:0}
+.corner.bl{bottom:16px;left:16px;border-right:0;border-top:0}
+.corner.br{bottom:16px;right:16px;border-left:0;border-top:0}
+.emblem-tag{
+  position:absolute;z-index:5;left:18px;bottom:18px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--muted);
+}
+.emblem-tag b{color:var(--mint);font-weight:500}
+.emblem-chips{position:absolute;z-index:5;right:18px;bottom:16px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.emblem-chips span{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--bone);
+  border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:rgba(6,10,8,.6);
+}
+@media(min-width:920px){
+  .hero{grid-template-columns:1.04fr .96fr;gap:56px;align-items:center;padding-top:64px}
+}
+
+/* ================= 区块标题 ================= */
+.sec{padding-top:64px}
+.sec-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  padding-top:22px;border-top:1px solid var(--line);
+}
+.sec-head h2{margin:0;font-size:clamp(21px,2.6vw,28px);font-weight:700;letter-spacing:-.01em}
+.sec-head .meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right;flex:none}
+.panel{
+  margin-top:18px;
+  background:linear-gradient(180deg,rgba(16,26,21,.92),rgba(9,15,12,.92));
+  border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:inset 0 1px 0 rgba(214,255,232,.05);
+}
+.panel-pad{padding:26px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+.panel-head h3{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
+.status{font-size:12.5px;color:var(--muted)}
+.status.ok{color:var(--mint)}
+.status.err{color:var(--danger)}
+.state-pill{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  border:1px solid rgba(111,224,141,.3);border-radius:999px;padding:5px 10px;color:var(--mint);
+  background:rgba(111,224,141,.06);white-space:nowrap;
+}
+
+/* ================= 进度 ================= */
+.prog-top{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.prog-pct{
+  font-family:var(--mono);font-size:clamp(42px,9vw,76px);line-height:.95;
+  color:var(--mint-2);font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+  text-shadow:0 0 40px rgba(111,224,141,.35);
+}
+.prog-of{text-align:right;font-family:var(--mono);font-size:13px;color:var(--muted);line-height:1.8}
+.prog-of b{display:block;font-size:17px;color:var(--bone);font-weight:500}
+.bar{
+  position:relative;height:11px;border-radius:999px;margin-top:22px;
+  background:rgba(214,255,232,.07);overflow:hidden;
+  border:1px solid var(--line-soft);
+}
+.bar > i{
+  display:block;height:100%;width:0%;
+  background:linear-gradient(90deg,var(--jade),var(--mint) 70%,var(--mint-2));
+  box-shadow:0 0 22px rgba(111,224,141,.55);
+  transition:width .9s cubic-bezier(.2,.7,.2,1);
+}
+.bar-ticks{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:repeating-linear-gradient(90deg,rgba(6,10,8,.6) 0 1px,transparent 1px 10%);
+}
+.prog-stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:24px -26px -26px;
+  border-top:1px solid var(--line);
+  background:var(--line-soft);
+}
+.prog-stats > div{
+  background:rgba(8,14,11,.6);padding:18px 26px;min-width:0;
+}
+.prog-stats .k{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);
+  display:block;margin-bottom:6px;
+}
+.prog-stats .v{
+  display:block;font-family:var(--mono);font-size:16px;color:var(--bone);
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.prog-stats .v.mint{color:var(--mint-2)}
+@media(min-width:820px){.prog-stats{grid-template-columns:repeat(4,1fr)}}
+
+/* ================= 费率 ================= */
+.fee-grid{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.fee-col{padding:24px 26px;background:rgba(9,15,12,.94)}
+.fee-col h4{
+  margin:0 0 4px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;
+}
+.fee-col h4 span{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--muted);
+  border:1px solid var(--line-soft);border-radius:6px;padding:2px 7px;
+}
+.fee-bar{
+  display:flex;height:9px;border-radius:999px;overflow:hidden;margin:16px 0 18px;
+  background:rgba(214,255,232,.07);
+}
+.fee-bar i{display:block;width:0;transition:width .9s cubic-bezier(.2,.7,.2,1)}
+.fee-bar i:first-child{border-radius:999px 0 0 999px}
+.fee-bar i:last-child{border-radius:0 999px 999px 0}
+.seg-hold{background:var(--mint)}
+.seg-lp{background:var(--jade)}
+.seg-mkt{background:var(--pink)}
+.seg-burn{background:var(--bone)}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:9px 0;font-size:13.5px;border-bottom:1px solid var(--line-soft);
+}
+.row:last-child{border-bottom:0}
+.row .legend{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+.row b{font-family:var(--mono);color:var(--bone);font-weight:500;font-variant-numeric:tabular-nums}
+.row.total{padding-top:12px;margin-top:4px;border-top:1px solid var(--line);font-weight:600}
+.row.total b{color:var(--mint-2);font-size:15px}
+.hint{margin:14px 0 0;font-size:11.5px;color:var(--muted);line-height:1.7}
+@media(min-width:820px){.fee-grid{grid-template-columns:1fr 1fr}}
+
+/* ================= 铸造区 ================= */
+.mint-grid{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.mint-col{padding:26px;background:rgba(9,15,12,.94);min-width:0}
+.field{margin-top:18px}
+.field > span{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;
+}
+.field input,.stepper input{
+  width:100%;padding:13px 14px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(4,9,7,.75);
+  color:var(--bone);font-family:var(--mono);font-size:13px;outline:none;
+  transition:border-color .18s,box-shadow .18s;
+}
+.field input:focus{border-color:rgba(111,224,141,.55);box-shadow:0 0 0 3px rgba(111,224,141,.14)}
+.field input::placeholder{color:#5d7166}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:16px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:14px;overflow:hidden}
+.info-cell{padding:12px 14px;background:rgba(8,14,11,.7);min-width:0}
+.info-cell span{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.04em}
+.info-cell b{display:block;margin-top:4px;font-size:13px;font-weight:500;color:var(--bone);word-break:break-all;line-height:1.45}
+.qty-block{margin-top:20px}
+.qty-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.qty-head > span{font-size:13px;color:var(--muted)}
+.stepper{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(4,9,7,.75)}
+.stepper button{
+  width:44px;height:46px;flex:none;border:0;background:transparent;color:var(--text);
+  font-size:19px;line-height:1;cursor:pointer;transition:background .16s,color .16s;
+}
+.stepper button:hover{background:rgba(111,224,141,.12);color:var(--mint-2)}
+.stepper button:focus-visible{outline:2px solid var(--mint);outline-offset:-3px}
+.stepper input{
+  width:64px;height:46px;padding:0;text-align:center;border:0;border-radius:0;
+  border-left:1px solid var(--line-soft);border-right:1px solid var(--line-soft);
+  font-size:16px;background:transparent;
+}
+.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.stepper input[type=number]{-moz-appearance:textfield}
+.qty-hint{font-size:11.5px;color:var(--muted);margin:8px 0 0;line-height:1.6}
+.total{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin-top:18px;padding:15px 16px;border-radius:14px;
+  border:1px dashed rgba(111,224,141,.34);background:rgba(111,224,141,.055);
+}
+.total .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);display:block}
+.total .v{font-family:var(--mono);font-size:21px;color:var(--mint-2);font-variant-numeric:tabular-nums;line-height:1.3}
+.total .v small{font-size:11px;color:var(--muted);margin-left:4px;letter-spacing:.04em}
+.total .unit{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;line-height:1.6}
+.mint-actions{display:grid;gap:10px;margin-top:18px}
+.mint-note{display:flex;align-items:flex-start;gap:9px;margin-top:16px;font-size:11.5px;color:var(--muted);line-height:1.7}
+.mint-note svg{width:14px;height:14px;color:var(--mint);flex:none;margin-top:2px}
+.flow{list-style:none;padding:0;margin:4px 0 0;counter-reset:f}
+.flow li{
+  display:flex;gap:12px;align-items:flex-start;padding:11px 0;
+  border-bottom:1px solid var(--line-soft);font-size:12.5px;color:var(--muted);
+}
+.flow li:last-child{border-bottom:0}
+.flow li em{
+  font-family:var(--mono);font-style:normal;font-size:10.5px;color:var(--mint);
+  border:1px solid rgba(111,224,141,.28);border-radius:6px;padding:2px 6px;flex:none;margin-top:2px;
+}
+.flow li b{color:var(--bone);font-weight:500}
+@media(min-width:900px){
+  .mint-grid{grid-template-columns:1.08fr .92fr}
+  .mint-col.sticky{position:sticky;top:88px;align-self:start}
+}
+
+/* ================= 流程时间轴 ================= */
+.steps{display:grid;grid-template-columns:1fr;margin-top:22px}
+.step{position:relative;padding:20px 0 22px 26px;border-left:1px solid var(--line)}
+.step:last-child{padding-bottom:0}
+.step .rail-dot{
+  position:absolute;left:-5px;top:26px;width:9px;height:9px;border-radius:50%;
+  background:var(--mint);box-shadow:0 0 0 4px rgba(111,224,141,.12),0 0 16px rgba(111,224,141,.6);
+}
+.step em{
+  font-family:var(--mono);font-style:normal;font-size:11px;letter-spacing:.1em;
+  color:var(--mint);display:block;
+}
+.step h4{margin:6px 0 6px;font-size:15.5px;font-weight:600}
+.step p{margin:0;font-size:13px;color:var(--muted);line-height:1.75;max-width:34ch}
+@media(min-width:800px){
+  .steps{grid-template-columns:repeat(4,1fr);gap:0}
+  .step{
+    padding:28px 22px 0 0;border-left:0;border-top:1px solid var(--line);
+  }
+  .step:last-child{padding-bottom:0}
+  .step .rail-dot{left:0;top:-5px}
+  .step em{padding-top:0}
+}
+
+/* ================= 信任要素 ================= */
+.trust{
+  display:grid;grid-template-columns:1fr;gap:1px;margin-top:18px;
+  background:var(--line-soft);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+}
+.trust-item{padding:24px;background:rgba(11,18,14,.92);min-width:0}
+.trust-item svg{width:22px;height:22px;color:var(--mint);margin-bottom:14px}
+.trust-item h4{margin:0 0 7px;font-size:14.5px;font-weight:600}
+.trust-item p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.75}
+@media(min-width:620px){.trust{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.trust{grid-template-columns:repeat(4,1fr)}}
+
+/* ================= FAQ ================= */
+.faq-wrap{display:grid;grid-template-columns:1fr;gap:24px;margin-top:18px}
+.faq-lead{font-size:13px;color:var(--muted);line-height:1.8;max-width:34ch}
+.faq-lead b{color:var(--bone)}
+.faq details{border-top:1px solid var(--line);padding:16px 0}
+.faq details:last-child{border-bottom:1px solid var(--line)}
+.faq summary{
+  cursor:pointer;list-style:none;font-size:14.5px;font-weight:600;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{
+  content:"+";font-family:var(--mono);font-size:16px;color:var(--mint);flex:none;
+  transition:transform .2s;
+}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{margin:10px 0 0;font-size:13px;color:var(--muted);line-height:1.8;max-width:62ch}
+@media(min-width:900px){.faq-wrap{grid-template-columns:.7fr 1.3fr;gap:56px}}
+
+/* ================= 页脚 ================= */
+.footer{
+  position:relative;z-index:2;border-top:1px solid var(--line-soft);
+  margin-top:72px;
+}
+.footer-in{
+  max-width:var(--maxw);margin:0 auto;padding:26px 24px 42px;
+  display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+}
+.footer-in p{margin:0;font-size:11.5px;color:var(--muted);line-height:1.7;max-width:62ch}
+.footer-links{display:flex;gap:14px;flex-wrap:wrap}
+.footer-links a{
+  font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:none;
+  border-bottom:1px solid transparent;transition:color .18s,border-color .18s;
+}
+.footer-links a:hover{color:var(--mint);border-color:rgba(111,224,141,.5)}
+
+/* ================= Toast ================= */
+#toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);
+  z-index:60;max-width:min(92vw,520px);
+  padding:12px 18px;border-radius:12px;
+  background:rgba(11,18,14,.96);border:1px solid var(--line);
+  box-shadow:0 24px 50px -24px rgba(0,0,0,.9);
+  color:var(--text);font-size:13px;line-height:1.55;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ================= 扫码弹层 ================= */
+.modal{
+  position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px;
+  background:rgba(4,8,6,.82);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.modal-box{
+  width:100%;max-width:360px;padding:24px;border-radius:22px;text-align:center;
+  background:linear-gradient(180deg,#101a15,#080d0a);
+  border:1px solid var(--line);
+  box-shadow:0 40px 80px -40px rgba(0,0,0,.95);
+}
+.modal-box h3{margin:0 0 6px;font-size:16px;font-weight:700}
+.qr{
+  width:min(240px,72vw);aspect-ratio:1;margin:16px auto 12px;padding:10px;
+  background:#fff;border-radius:12px;display:grid;place-items:center;
+  overflow:hidden;
+}
+.qr svg{display:block;width:100%;height:100%}
+.modal-box .hint{font-size:11.5px;color:var(--muted);margin:6px 0}
+.modal-box .hint b{font-family:var(--mono);color:var(--mint-2)}
+.modal-box a.btn-primary{margin-top:10px}
+.badge{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--muted)}
+.badge.ok{color:var(--mint)}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .emblem .scan,.live i,.emblem > svg.panda{animation:none}
+  *{transition-duration:.01ms!important}
+}
+</style>
 </head>
 <body>
-  <canvas id="pandaBg"></canvas>
-  <div class="aurora"></div>
-  <div class="dots"></div>
+<!-- 卡通熊猫形象（全站复用） -->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <radialGradient id="pandaSkin" cx="36%" cy="24%" r="82%">
+      <stop offset="0%" stop-color="#FFFEF8"/>
+      <stop offset="55%" stop-color="#F1EDE1"/>
+      <stop offset="100%" stop-color="#D8DBCE"/>
+    </radialGradient>
+    <linearGradient id="pandaEar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C3532"/>
+      <stop offset="100%" stop-color="#171C1A"/>
+    </linearGradient>
+    <g id="pandaFace">
+      <circle cx="48" cy="50" r="31" fill="url(#pandaEar)" />
+      <circle cx="152" cy="50" r="31" fill="url(#pandaEar)" />
+      <circle cx="48" cy="50" r="17" fill="#121614" opacity=".85" />
+      <circle cx="152" cy="50" r="17" fill="#121614" opacity=".85" />
+      <ellipse cx="100" cy="113" rx="80" ry="73" fill="url(#pandaSkin)" />
+      <ellipse cx="74" cy="70" rx="30" ry="15" fill="#FFFFFF" opacity=".3" transform="rotate(-14 74 70)" />
+      <ellipse cx="70" cy="105" rx="23" ry="30" transform="rotate(-16 70 105)" fill="#1B211F" />
+      <ellipse cx="130" cy="105" rx="23" ry="30" transform="rotate(16 130 105)" fill="#1B211F" />
+      <circle cx="71" cy="103" r="9.5" fill="#FBFAF2" />
+      <circle cx="129" cy="103" r="9.5" fill="#FBFAF2" />
+      <circle cx="72.5" cy="102" r="5.2" fill="#0C100E" />
+      <circle cx="127.5" cy="102" r="5.2" fill="#0C100E" />
+      <circle cx="70" cy="99.5" r="1.8" fill="#FFFFFF" opacity=".9" />
+      <circle cx="125" cy="99.5" r="1.8" fill="#FFFFFF" opacity=".9" />
+      <ellipse cx="49" cy="131" rx="13" ry="7.5" fill="#F0A0B8" opacity=".45" />
+      <ellipse cx="151" cy="131" rx="13" ry="7.5" fill="#F0A0B8" opacity=".45" />
+      <path d="M100 121c-6.5 0-11 3-11 6.3 0 4 5.4 6.4 11 6.4s11-2.4 11-6.4c0-3.3-4.5-6.3-11-6.3z" fill="#1B211F" />
+      <path d="M100 133.5v4.2" stroke="#1B211F" stroke-width="2.6" stroke-linecap="round" fill="none" />
+      <path d="M100 137.7c-4.2 6-12.4 5.6-15.2-.4M100 137.7c4.2 6 12.4 5.6 15.2-.4" stroke="#1B211F" stroke-width="2.8" stroke-linecap="round" fill="none" />
+    </g>
+    <g id="bamboo">
+      <path d="M0 0c10 2 18 10 20 20-10-2-18-10-20-20z" fill="#6FE08D" opacity=".85" />
+    </g>
+  </defs>
+</svg>
 
-  <!-- 顶部栏 -->
-  <header class="topbar">
+<canvas id="pandaBg" aria-hidden="true"></canvas>
+<div class="pixgrid" aria-hidden="true"></div>
+
+<!-- ===== 顶栏 ===== -->
+<header class="topbar">
+  <div class="topbar-in">
     <div class="brand">
-      <div class="logo"><svg class="panda" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><circle cx="34" cy="30" r="16" fill="#2b2b2b"/><circle cx="86" cy="30" r="16" fill="#2b2b2b"/><circle cx="60" cy="62" r="42" fill="#ffffff" stroke="#1c1c1c" stroke-width="4"/><ellipse cx="43" cy="58" rx="12" ry="15" fill="#2b2b2b"/><ellipse cx="77" cy="58" rx="12" ry="15" fill="#2b2b2b"/><circle cx="45" cy="60" r="5" fill="#fff"/><circle cx="75" cy="60" r="5" fill="#fff"/><circle cx="46.5" cy="61" r="2.4" fill="#1c1c1c"/><circle cx="76.5" cy="61" r="2.4" fill="#1c1c1c"/><ellipse cx="60" cy="75" rx="7" ry="5.5" fill="#2b2b2b"/><path d="M52 83 Q60 91 68 83" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/><circle cx="88" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/></svg></div>
+      <div class="logo">
+        <svg class="panda" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <use href="#pandaFace" xlink:href="#pandaFace" />
+        </svg>
+      </div>
       <div class="brand-txt">
         <h1 id="topName">熊猫铸造</h1>
-        <p>Panda Mint · BSC</p>
+        <p>PANDA MINT / BSC</p>
       </div>
     </div>
+    <nav class="nav">
+      <a href="#progress">进度</a>
+      <a href="#fees">费率</a>
+      <a href="#mint">铸造</a>
+      <a href="#flow">流程</a>
+      <a href="#faq">说明</a>
+    </nav>
     <div class="top-actions">
+      <span class="chain-chip"><i></i>BSC · 56</span>
       <span class="wallet-pill" id="topWallet">未连接</span>
-      <button id="connectBtn" class="btn btn-connect">连接币安 AI 钱包</button>
-    </div>
-  </header>
-
-  <main>
-    <!-- Hero -->
-    <section class="hero">
-      <div class="hero-orb"><svg class="panda" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><circle cx="34" cy="30" r="16" fill="#2b2b2b"/><circle cx="86" cy="30" r="16" fill="#2b2b2b"/><circle cx="60" cy="62" r="42" fill="#ffffff" stroke="#1c1c1c" stroke-width="4"/><ellipse cx="43" cy="58" rx="12" ry="15" fill="#2b2b2b"/><ellipse cx="77" cy="58" rx="12" ry="15" fill="#2b2b2b"/><circle cx="45" cy="60" r="5" fill="#fff"/><circle cx="75" cy="60" r="5" fill="#fff"/><circle cx="46.5" cy="61" r="2.4" fill="#1c1c1c"/><circle cx="76.5" cy="61" r="2.4" fill="#1c1c1c"/><ellipse cx="60" cy="75" rx="7" ry="5.5" fill="#2b2b2b"/><path d="M52 83 Q60 91 68 83" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/><circle cx="88" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/></svg></div>
-      <h2><span id="heroName">熊猫代币</span> <span class="hero-sym" id="heroSymbol">PANDA</span></h2>
-      <p class="hero-sub" id="heroSub">向合约发送 BNB 即可铸造 · 每笔交易按合约配置收取买卖手续费</p>
-      <div class="hero-badges">
-        <span class="hbadge">🐼 铸造资金自动注入 LP 底池</span>
-        <span class="hbadge">🔒 开盘后 LP 回流营销钱包</span>
-        <span class="hbadge">🛡️ 开盘即放弃权限</span>
-      </div>
-    </section>
-
-    <!-- 进度 -->
-    <section class="card prog">
-      <div class="prog-head">
-        <h3>铸造进度</h3>
-        <span class="status" id="progStatus">未加载</span>
-      </div>
-      <div class="bar"><i id="progBar"></i></div>
-      <div class="prog-line">
-        <b id="progPct">0%</b>
-        <span id="progOf">— / — 份</span>
-      </div>
-      <ul class="prog-stats">
-        <li><span>已募资</span><b id="progRaised">— BNB</b></li>
-        <li><span>剩余份数</span><b id="progLeft">—</b></li>
-        <li><span>单次价格</span><b id="progPrice">— BNB</b></li>
-        <li><span>状态</span><b id="progState">—</b></li>
-      </ul>
-    </section>
-
-    <!-- 费率明细（来自合约，开盘后锁定） -->
-    <section class="card fee-card hidden" id="feeCard">
-      <h3>🐼 费率明细（读取自合约）</h3>
-      <div class="fee-grid">
-        <div class="fee-col">
-          <h4>买入</h4>
-          <div class="row"><span>持币分红</span><b id="feeBuyHold">-</b></div>
-          <div class="row"><span>回流 LP</span><b id="feeBuyLP">-</b></div>
-          <div class="row"><span>营销</span><b id="feeBuyMarketing">-</b></div>
-          <div class="row"><span>销毁</span><b id="feeBuyBurn">-</b></div>
-          <div class="row total"><span>合计</span><b id="feeBuyTotal">-</b></div>
-        </div>
-        <div class="fee-col">
-          <h4>卖出</h4>
-          <div class="row"><span>持币分红</span><b id="feeSellHold">-</b></div>
-          <div class="row"><span>回流 LP</span><b id="feeSellLP">-</b></div>
-          <div class="row"><span>营销</span><b id="feeSellMarketing">-</b></div>
-          <div class="row"><span>销毁</span><b id="feeSellBurn">-</b></div>
-          <div class="row total"><span>合计</span><b id="feeSellTotal">-</b></div>
-        </div>
-      </div>
-      <p class="hint">费率为合约当前配置，开盘后锁定不可更改。单位：10000 = 100%（如 280 = 2.80%）。</p>
-    </section>
-
-    <!-- 铸造卡片 -->
-    <section class="card mint-card">
-      <h3>🐼 铸造区</h3>
-
-      <label class="field">
-        <span>代币合约地址</span>
-        <input id="contract" type="text" value="0xf71fb53550651221b6f3ca05d5fb6937d6cdb0f0" placeholder="0x... 粘贴已部署的 V4 合约地址" />
-      </label>
-      <button id="loadBtn" class="btn btn-ghost">加载代币信息</button>
-
-      <div id="tokenInfo" class="info hidden">
-        <div class="row"><span>名称</span><b id="infoName">-</b></div>
-        <div class="row"><span>符号</span><b id="infoSymbol">-</b></div>
-        <div class="row"><span>我的余额</span><b id="infoBal">-</b></div>
-        <div class="row"><span>已铸造进度</span><b id="infoProgress">-</b></div>
-        <div class="row"><span>单次价格</span><b id="infoPrice">-</b></div>
-        <div class="row"><span>我的已铸造</span><b id="infoMinted">-</b></div>
-        <div class="row"><span>我还可铸造</span><b id="infoMyLeft">-</b></div>
-        <div class="row"><span>NFT 门槛</span><b id="infoNFT">-</b></div>
-        <div class="row"><span>状态</span><b id="infoStatus">-</b></div>
-      </div>
-
-      <div class="qty-row">
-        <span>铸造份数</span>
-        <div class="stepper">
-          <button id="qtyMinus" type="button">−</button>
-          <input id="mintQty" type="number" min="1" max="10" value="1" />
-          <button id="qtyPlus" type="button">+</button>
-        </div>
-        <span class="qty-hint">单次精确 1 份；多份将逐笔确认</span>
-      </div>
-
-      <button id="mintBtn" class="btn btn-primary btn-lg" disabled>铸造 (发送 BNB)</button>
-      <button id="addTokenBtn" class="btn btn-ghost hidden">＋ 添加到钱包</button>
-      <div id="mintStatus" class="status"></div>
-    </section>
-
-    <!-- 说明 -->
-    <section class="card faq">
-      <h3>说明</h3>
-      <details open>
-        <summary>怎么铸造？</summary>
-        <p>连接币安 AI 钱包后，输入已部署的 V4 合约地址 → 点「加载代币信息」→ 设置份数 → 点「铸造」。每铸造 1 份需向合约发送固定数量的 BNB（单次价格），钱包会逐笔弹出确认。</p>
-      </details>
-      <details>
-        <summary>手机怎么用？</summary>
-        <p>用「币安 App」的 Web3 / DApp 浏览器打开本页面，即可直接连接币安 AI 钱包铸造。或在电脑安装币安钱包 / MetaMask 插件。</p>
-      </details>
-      <details>
-        <summary>铸造后能马上卖吗？</summary>
-        <p>开盘前铸造的代币不可转账；达到铸造目标后合约自动开盘并注入 PancakeSwap，之后才能交易。</p>
-      </details>
-      <details>
-        <summary>安全说明</summary>
-        <p>铸造资金 100% 进入 LP 底池，回流 LP 的 LP 代币与营销费 WBNB 进入营销钱包，开盘后合约放弃 owner 权限。本页不托管私钥、不代发交易，请自行在 BscScan 核验合约。</p>
-      </details>
-    </section>
-
-    <div class="bottom-actions">
-      <a id="bscLink" class="btn btn-ghost btn-lg" href="#" target="_blank" rel="noopener">BscScan 核验</a>
-    </div>
-  </main>
-
-  <footer>🐼 熊猫铸造 · V4 Mint — 本页不托管任何资产，请务必核对合约地址。</footer>
-
-  <div id="toast"></div>
-
-  <!-- 币安 AI 钱包扫码登录弹层 -->
-  <div id="qrModal" class="modal hidden">
-    <div class="modal-box">
-      <h3>连接币安 AI 钱包</h3>
-      <div id="qrBox" class="qr"></div>
-      <p class="hint">配对码：<b id="awPair">——</b></p>
-      <p id="qrMode" class="hint"></p>
-      <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener">打开币安 App</a>
-      <p id="awWait" class="hint"></p>
-      <span id="awBadge" class="badge"></span>
-      <div style="margin-top:14px"><button id="qrCancel" class="btn btn-ghost">取消</button></div>
+      <button id="connectBtn" class="btn btn-connect" type="button">连接钱包</button>
     </div>
   </div>
+</header>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-  <script src="contract_v4.js"></script>
-  <script src="vendor/wc.js"></script>
-  <script src="app.js"></script>
+<div class="shell">
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="live"><i></i>V4 公平铸造 · 实时读取链上数据</div>
+      <h1><span id="heroName">熊猫代币</span><span class="sym" id="heroSymbol">PANDA</span></h1>
+      <p class="hero-sub" id="heroSub">向合约发送 BNB 即可铸造 · 每笔交易按合约配置收取买卖手续费</p>
+      <div class="hero-badges">
+        <span class="hbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8h14M5 16h14"/></svg>铸造资金直达 LP 底池</span>
+        <span class="hbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>达标开盘即放弃权限</span>
+        <span class="hbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>不托管私钥 · 不代发交易</span>
+      </div>
+
+      <div class="addr">
+        <span class="tag">CONTRACT</span>
+        <code id="heroAddr" data-addr="">0xf71fb53550651221b6f3ca05d5fb6937d6cdb0f0</code>
+        <button class="icon-btn" id="copyAddr" type="button" aria-label="复制合约地址">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H7a2 2 0 0 0-2 2v8"/></svg>
+        </button>
+        <a class="icon-btn" id="heroScan" href="https://bscscan.com" target="_blank" rel="noopener" aria-label="在 BscScan 打开合约">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+        </a>
+      </div>
+
+      <div class="hero-cta">
+        <a class="btn btn-primary btn-lg" href="#mint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          进入铸造
+        </a>
+        <a class="btn btn-lg btn-ghost" id="bscLink" href="https://bscscan.com" target="_blank" rel="noopener">
+          BscScan 核验
+        </a>
+      </div>
+
+      <div class="micro-stats">
+        <div><span class="k">单笔价格</span><span class="v" id="mPrice">— BNB</span></div>
+        <div><span class="k">铸造目标</span><span class="v" id="mTarget">— 份</span></div>
+        <div><span class="k">已募资</span><span class="v mint" id="mRaised">— BNB</span></div>
+      </div>
+    </div>
+
+    <div class="emblem" aria-hidden="true">
+      <div class="grid-lines"></div>
+      <div class="halo"></div>
+      <div class="plate"></div>
+      <div class="scan"></div>
+      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+      <svg class="panda" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <use href="#pandaFace" xlink:href="#pandaFace" />
+      </svg>
+      <div class="emblem-tag">GENESIS / <b>V4</b></div>
+      <div class="emblem-chips"><span>LP 100%</span><span>OWNER RENOUNCED</span></div>
+    </div>
+  </section>
+  <!-- ===== 铸造进度 ===== -->
+  <section class="sec" id="progress">
+    <div class="sec-head">
+      <h2>铸造进度</h2>
+      <div class="meta"><span class="state-pill" id="progStatus">未加载</span></div>
+    </div>
+    <div class="panel panel-pad">
+      <div class="prog-top">
+        <div>
+          <div class="prog-pct" id="progPct">0%</div>
+          <div class="prog-of" style="text-align:left;margin-top:10px">完成度 · 达标即自动开盘</div>
+        </div>
+        <div class="prog-of">
+          <b id="progOf">— / — 份</b>
+          已铸造 / 总份数
+        </div>
+      </div>
+      <div class="bar" role="progressbar" aria-label="铸造进度">
+        <i id="progBar"></i>
+        <span class="bar-ticks" aria-hidden="true"></span>
+      </div>
+      <div class="prog-stats">
+        <div><span class="k">已募资</span><span class="v" id="progRaised">— BNB</span></div>
+        <div><span class="k">剩余份数</span><span class="v" id="progLeft">—</span></div>
+        <div><span class="k">单次价格</span><span class="v" id="progPrice">— BNB</span></div>
+        <div><span class="k">合约状态</span><span class="v mint" id="progState">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 费率结构 ===== -->
+  <section class="sec" id="fees">
+    <div class="sec-head">
+      <h2>费率结构</h2>
+      <div class="meta">读取自合约 · 开盘后锁定</div>
+    </div>
+    <div class="panel hidden" id="feeCard">
+      <div class="fee-grid">
+        <div class="fee-col">
+          <h4>买入侧 <span>BUY</span></h4>
+          <div class="fee-bar" aria-hidden="true">
+            <i class="seg-hold" id="feeBuyHoldBar"></i>
+            <i class="seg-lp" id="feeBuyLPBar"></i>
+            <i class="seg-mkt" id="feeBuyMarketingBar"></i>
+            <i class="seg-burn" id="feeBuyBurnBar"></i>
+          </div>
+          <div class="row"><span class="legend"><i class="dot seg-hold"></i>持币分红</span><b id="feeBuyHold">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-lp"></i>回流 LP</span><b id="feeBuyLP">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-mkt"></i>营销</span><b id="feeBuyMarketing">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-burn"></i>销毁</span><b id="feeBuyBurn">-</b></div>
+          <div class="row total"><span>买入合计</span><b id="feeBuyTotal">-</b></div>
+        </div>
+        <div class="fee-col">
+          <h4>卖出侧 <span>SELL</span></h4>
+          <div class="fee-bar" aria-hidden="true">
+            <i class="seg-hold" id="feeSellHoldBar"></i>
+            <i class="seg-lp" id="feeSellLPBar"></i>
+            <i class="seg-mkt" id="feeSellMarketingBar"></i>
+            <i class="seg-burn" id="feeSellBurnBar"></i>
+          </div>
+          <div class="row"><span class="legend"><i class="dot seg-hold"></i>持币分红</span><b id="feeSellHold">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-lp"></i>回流 LP</span><b id="feeSellLP">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-mkt"></i>营销</span><b id="feeSellMarketing">-</b></div>
+          <div class="row"><span class="legend"><i class="dot seg-burn"></i>销毁</span><b id="feeSellBurn">-</b></div>
+          <div class="row total"><span>卖出合计</span><b id="feeSellTotal">-</b></div>
+        </div>
+      </div>
+      <div class="fee-col" style="border-top:1px solid var(--line);background:transparent">
+        <p class="hint" style="margin:0">费率为合约当前配置，开盘后不可更改。单位 10000 = 100%（例如 280 表示 2.80%）。全部税费按链上实际执行，本页仅做展示。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 铸造终端 ===== -->
+  <section class="sec" id="mint">
+    <div class="sec-head">
+      <h2>铸造终端</h2>
+      <div class="meta">逐笔钱包确认 · 单笔精确 1 份</div>
+    </div>
+    <div class="panel mint-panel" style="overflow:hidden">
+      <div class="mint-grid">
+        <div class="mint-col">
+          <div class="panel-head">
+            <h3>载入合约</h3>
+            <span class="status">BSC 主网 · 只读节点</span>
+          </div>
+          <label class="field" style="margin-top:0">
+            <span>代币合约地址</span>
+            <input id="contract" type="text" spellcheck="false" value="0xf71fb53550651221b6f3ca05d5fb6937d6cdb0f0" placeholder="0x... 粘贴已部署的 V4 合约地址" />
+          </label>
+          <div style="margin-top:12px">
+            <button id="loadBtn" class="btn btn-block" type="button">加载代币信息</button>
+          </div>
+
+          <div id="tokenInfo" class="hidden">
+            <div class="info-grid">
+              <div class="info-cell"><span>名称</span><b id="infoName">-</b></div>
+              <div class="info-cell"><span>符号</span><b id="infoSymbol">-</b></div>
+              <div class="info-cell"><span>我的余额</span><b id="infoBal">-</b></div>
+              <div class="info-cell"><span>已铸造进度</span><b id="infoProgress">-</b></div>
+              <div class="info-cell"><span>单次价格</span><b id="infoPrice">-</b></div>
+              <div class="info-cell"><span>我的已铸造</span><b id="infoMinted">-</b></div>
+              <div class="info-cell"><span>我还可铸造</span><b id="infoMyLeft">-</b></div>
+              <div class="info-cell"><span>NFT 门槛</span><b id="infoNFT">-</b></div>
+              <div class="info-cell"><span>合约状态</span><b id="infoStatus">-</b></div>
+              <div class="info-cell"><span>手续费</span><b id="infoFeeHint">买 / 卖 见费率</b></div>
+            </div>
+          </div>
+
+          <ul class="flow">
+            <li><em>01</em><span><b>连接币安 AI 钱包</b> · 扫码或币安 App 内直接授权</li>
+            <li><em>02</em><span><b>加载合约</b> · 名称、价格、上限与进度全部读自链上</li>
+            <li><em>03</em><span><b>设置份数</b> · 每份精确发送合约要求的 BNB</li>
+            <li><em>04</em><span><b>钱包逐笔确认</b> · 达标后自动开盘并注入 PancakeSwap</li>
+          </ul>
+        </div>
+
+        <div class="mint-col">
+          <div class="panel-head">
+            <h3>下单</h3>
+            <span class="status">每份需一次钱包确认</span>
+          </div>
+
+          <div class="qty-block">
+            <div class="qty-head"><span>铸造份数</span><span class="status">1 — 10 份</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:12px">
+              <div class="stepper">
+                <button id="qtyMinus" type="button" aria-label="减少份数">−</button>
+                <input id="mintQty" type="number" min="1" max="10" value="1" aria-label="铸造份数" />
+                <button id="qtyPlus" type="button" aria-label="增加份数">+</button>
+              </div>
+              <span class="status" id="qtyLeftHint">未连接</span>
+            </div>
+            <p class="qty-hint">单次精确 1 份；多份将逐笔弹出确认，超出地址上限的部分会自动截断。</p>
+          </div>
+
+          <div class="total">
+            <div>
+              <span class="k">预计支付</span>
+              <span class="v"><span id="mintTotal">—</span> <small>BNB</small></span>
+            </div>
+            <div class="unit" id="mintUnit">— BNB / 份<br /><span style="color:#6b7f72">不含 gas</span></div>
+          </div>
+
+          <div class="mint-actions">
+            <button id="mintBtn" class="btn btn-primary btn-lg" type="button" disabled>铸造（发送 BNB）</button>
+            <button id="addTokenBtn" class="btn btn-ghost hidden" type="button">添加到钱包</button>
+          </div>
+          <div id="mintStatus" class="status" style="margin-top:14px;line-height:1.7"></div>
+
+          <div class="mint-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+            <span>铸造资金 100% 进入 LP 底池；开盘前代币不可转账，开盘后 LP 回流营销钱包并放弃 owner 权限。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 铸造流程 ===== -->
+  <section class="sec" id="flow">
+    <div class="sec-head">
+      <h2>铸造流程</h2>
+      <div class="meta">从钱包授权到开盘上线的四个节点</div>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="rail-dot"></span>
+        <em>01 / CONNECT</em>
+        <h4>连接钱包</h4>
+        <p>点击「连接钱包」用币安 App 扫码，或在币安 App 内直接打开本页。</p>
+      </div>
+      <div class="step">
+        <span class="rail-dot"></span>
+        <em>02 / LOAD</em>
+        <h4>载入合约</h4>
+        <p>输入已部署的 V4 地址，页面从合约读取价格、上限与税费配置。</p>
+      </div>
+      <div class="step">
+        <span class="rail-dot"></span>
+        <em>03 / MINT</em>
+        <h4>逐笔铸造</h4>
+        <p>每份发送固定 BNB；资金实时进入铸造池，进度同步刷新。</p>
+      </div>
+      <div class="step">
+        <span class="rail-dot"></span>
+        <em>04 / LAUNCH</em>
+        <h4>达标开盘</h4>
+        <p>目标达成后自动注入 PancakeSwap 开盘，合约放弃权限，税费锁定。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 机制与信任 ===== -->
+  <section class="sec" id="trust">
+    <div class="sec-head">
+      <h2>机制与信任</h2>
+      <div class="meta">全部可在 BscScan 复核</div>
+    </div>
+    <div class="trust">
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M12 3v18"/><circle cx="12" cy="12" r="9"/></svg>
+        <h4>资金直达 LP</h4>
+        <p>每一份铸造的 BNB 100% 进入底池，合约不留存任何铸造资金。</p>
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <h4>开盘即弃权</h4>
+        <p>达标后合约自动放弃 owner 权限，费率与上限不再可被修改。</p>
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
+        <h4>无托管无代发</h4>
+        <p>本页不接触私钥、不代为签名，每笔交易都由你的钱包确认。</p>
+      </div>
+      <div class="trust-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3"/><path d="M9 11h6M9 14h4"/></svg>
+        <h4>链上可核验</h4>
+        <p>地址、费率与进度均实时读自合约，可在 BscScan 逐项比对。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section class="sec" id="faq">
+    <div class="sec-head">
+      <h2>说明</h2>
+      <div class="meta">操作前请先核对合约地址</div>
+    </div>
+    <div class="faq-wrap">
+      <p class="faq-lead">下面是铸造前后最常被问到的四件事。任何一步都以链上合约为准，<b>页面上不托管任何资产</b>。</p>
+      <div class="faq">
+        <details open>
+          <summary>怎么铸造？</summary>
+          <p>连接币安 AI 钱包后，确认合约地址 → 点「加载代币信息」→ 设置份数 → 点「铸造」。每铸造 1 份需向合约发送固定数量的 BNB，钱包会逐笔弹出确认，全部确认后进度自动刷新。</p>
+        </details>
+        <details>
+          <summary>手机怎么用？</summary>
+          <p>用「币安 App」的 Web3 / DApp 浏览器打开本页面，即可直接连接币安钱包铸造；也可在电脑安装币安钱包或 MetaMask 插件。</p>
+        </details>
+        <details>
+          <summary>铸造后能马上卖吗？</summary>
+          <p>开盘前铸造的代币不可转账。达到铸造目标后合约自动开盘并注入 PancakeSwap，之后才能正常交易。</p>
+        </details>
+        <details>
+          <summary>安全说明</summary>
+          <p>铸造资金 100% 进入 LP 底池；回流 LP 的 LP 代币与营销费 WBNB 进入营销钱包；开盘后合约放弃 owner 权限。本页不托管私钥、不代发交易，请自行在 BscScan 核验合约。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer class="footer">
+  <div class="footer-in">
+    <p>PANDA MINT · V4 — 本页只做链上数据展示与交易发起，不托管任何资产。铸造前请务必核对合约地址，注意链上风险。</p>
+    <div class="footer-links">
+      <a href="https://bscscan.com" target="_blank" rel="noopener">BSCSCAN</a>
+      <a href="#progress">进度</a>
+      <a href="#mint">铸造</a>
+    </div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<!-- 币安 AI 钱包扫码登录弹层 -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>连接币安 AI 钱包</h3>
+    <p class="hint">用币安 App 扫描下方二维码</p>
+    <div id="qrBox" class="qr"></div>
+    <p class="hint">配对码：<b id="awPair">——</b></p>
+    <p id="qrMode" class="hint"></p>
+    <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener">打开币安 App</a>
+    <p id="awWait" class="hint"></p>
+    <span id="awBadge" class="badge"></span>
+    <div style="margin-top:14px"><button id="qrCancel" class="btn btn-ghost btn-block" type="button">取消</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="contract_v4.js"></script>
+<script src="vendor/wc.js"></script>
+<script src="app.js"></script>
+<script>
+/* 视觉增强层：不改动铸造逻辑，只把 app.js 写入的文本同步到新版视觉组件 */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var timer = null;
+
+  function toast(msg) {
+    var t = $("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._tm);
+    t._tm = setTimeout(function () { t.classList.remove("show"); }, 2400);
+  }
+
+  function pct(text) {
+    var m = String(text || "").match(/([\d.]+)\s*%/);
+    return m ? parseFloat(m[1]) : 0;
+  }
+  function bnb(text) {
+    var m = String(text || "").match(/([\d.]+)\s*BNB/);
+    return m ? parseFloat(m[1]) : NaN;
+  }
+
+  /* 费率堆叠条 */
+  function feeBars(side) {
+    var ids = ["Hold", "LP", "Marketing", "Burn"];
+    var vals = ids.map(function (k) { return pct(($("fee" + side + k) || {}).textContent); });
+    var sum = vals.reduce(function (a, b) { return a + b; }, 0);
+    ids.forEach(function (k, i) {
+      var el = $("fee" + side + k + "Bar");
+      if (!el) return;
+      el.style.width = sum > 0 ? (vals[i] / sum * 100).toFixed(2) + "%" : "0%";
+    });
+  }
+
+  /* Hero 关键指标 + 预计支付 */
+  function sync() {
+    var priceText = ($("progPrice") || {}).textContent || "";
+    var raisedText = ($("progRaised") || {}).textContent || "";
+    var ofText = ($("progOf") || {}).textContent || "";
+    var infoPriceText = ($("infoPrice") || {}).textContent || "";
+
+    if ($("mPrice")) $("mPrice").textContent = priceText && priceText !== "— BNB" ? priceText : "— BNB";
+    if ($("mRaised")) $("mRaised").textContent = raisedText && raisedText !== "— BNB" ? raisedText : "— BNB";
+
+    var ofMatch = ofText.match(/(\d+)\s*\/\s*(\d+)/);
+    if ($("mTarget") && ofMatch) $("mTarget").textContent = ofMatch[2] + " 份";
+
+    var unit = bnb(infoPriceText);
+    if (isNaN(unit)) unit = bnb(priceText);
+    if ($("mintUnit")) $("mintUnit").innerHTML = (isNaN(unit) ? "—" : unit.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")) + " BNB / 份<br /><span style=\"color:#6b7f72\">不含 gas</span>";
+
+    var qty = parseInt(($("mintQty") || {}).value || "1", 10);
+    if (!isFinite(qty) || qty < 1) qty = 1;
+    if ($("mintTotal")) {
+      $("mintTotal").textContent = isNaN(unit) ? "—" : (unit * qty).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    var leftText = ($("infoMyLeft") || {}).textContent || "未连接";
+    if ($("qtyLeftHint")) {
+      $("qtyLeftHint").textContent = leftText && leftText !== "-" ? ("本地址可铸造 " + leftText) : "未连接";
+    }
+
+    if ($("infoFeeHint")) {
+      var b = ($("feeBuyTotal") || {}).textContent || "";
+      var s = ($("feeSellTotal") || {}).textContent || "";
+      if (b && b !== "-") $("infoFeeHint").textContent = "买 " + b + " / 卖 " + s;
+    }
+
+    feeBars("Buy");
+    feeBars("Sell");
+
+    var addr = (($("contract") || {}).value || "").trim();
+    if (addr) {
+      if ($("heroAddr")) $("heroAddr").textContent = addr;
+      if ($("heroScan")) $("heroScan").href = "https://bscscan.com/address/" + addr;
+      if ($("bscLink")) $("bscLink").href = "https://bscscan.com/address/" + addr;
+    }
+  }
+
+  function loop() { sync(); }
+
+  /* 复制合约地址 */
+  var copyBtn = $("copyAddr");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function () {
+      var addr = (($("contract") || {}).value || "").trim();
+      var done = function () { toast("合约地址已复制"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(addr).then(done, function () { legacyCopy(addr, done); });
+      } else {
+        legacyCopy(addr, done);
+      }
+    });
+  }
+  function legacyCopy(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { toast("复制失败，请手动选择地址"); }
+    document.body.removeChild(ta);
+  }
+
+  /* 数量变化即时刷新预计支付 */
+  var qty = $("mintQty");
+  if (qty) qty.addEventListener("input", loop);
+  if ($("qtyMinus")) $("qtyMinus").addEventListener("click", function () { setTimeout(loop, 0); });
+  if ($("qtyPlus")) $("qtyPlus").addEventListener("click", function () { setTimeout(loop, 0); });
+  if ($("contract")) $("contract").addEventListener("input", loop);
+  if ($("loadBtn")) $("loadBtn").addEventListener("click", function () { setTimeout(loop, 300); });
+  var mintBtn = $("mintBtn");
+  if (mintBtn) mintBtn.addEventListener("click", function () { setTimeout(loop, 3000); });
+
+  timer = setInterval(loop, 900);
+  window.addEventListener("load", loop);
+  document.addEventListener("DOMContentLoaded", loop);
+})();
+</script>
 </body>
 </html>
