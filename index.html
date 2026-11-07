@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>🐼 熊猫铸造 · V4 Mint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="pandaBg"></canvas>
+  <div class="aurora"></div>
+  <div class="dots"></div>
+
+  <!-- 顶部栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><svg class="panda" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><circle cx="34" cy="30" r="16" fill="#2b2b2b"/><circle cx="86" cy="30" r="16" fill="#2b2b2b"/><circle cx="60" cy="62" r="42" fill="#ffffff" stroke="#1c1c1c" stroke-width="4"/><ellipse cx="43" cy="58" rx="12" ry="15" fill="#2b2b2b"/><ellipse cx="77" cy="58" rx="12" ry="15" fill="#2b2b2b"/><circle cx="45" cy="60" r="5" fill="#fff"/><circle cx="75" cy="60" r="5" fill="#fff"/><circle cx="46.5" cy="61" r="2.4" fill="#1c1c1c"/><circle cx="76.5" cy="61" r="2.4" fill="#1c1c1c"/><ellipse cx="60" cy="75" rx="7" ry="5.5" fill="#2b2b2b"/><path d="M52 83 Q60 91 68 83" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/><circle cx="88" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/></svg></div>
+      <div class="brand-txt">
+        <h1 id="topName">熊猫铸造</h1>
+        <p>Panda Mint · BSC</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="wallet-pill" id="topWallet">未连接</span>
+      <button id="connectBtn" class="btn btn-connect">连接币安 AI 钱包</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-orb"><svg class="panda" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><circle cx="34" cy="30" r="16" fill="#2b2b2b"/><circle cx="86" cy="30" r="16" fill="#2b2b2b"/><circle cx="60" cy="62" r="42" fill="#ffffff" stroke="#1c1c1c" stroke-width="4"/><ellipse cx="43" cy="58" rx="12" ry="15" fill="#2b2b2b"/><ellipse cx="77" cy="58" rx="12" ry="15" fill="#2b2b2b"/><circle cx="45" cy="60" r="5" fill="#fff"/><circle cx="75" cy="60" r="5" fill="#fff"/><circle cx="46.5" cy="61" r="2.4" fill="#1c1c1c"/><circle cx="76.5" cy="61" r="2.4" fill="#1c1c1c"/><ellipse cx="60" cy="75" rx="7" ry="5.5" fill="#2b2b2b"/><path d="M52 83 Q60 91 68 83" fill="none" stroke="#1c1c1c" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/><circle cx="88" cy="80" r="7.5" fill="#ff9ec4" opacity="0.85"/></svg></div>
+      <h2><span id="heroName">熊猫代币</span> <span class="hero-sym" id="heroSymbol">PANDA</span></h2>
+      <p class="hero-sub" id="heroSub">向合约发送 BNB 即可铸造 · 每笔交易按合约配置收取买卖手续费</p>
+      <div class="hero-badges">
+        <span class="hbadge">🐼 铸造资金自动注入 LP 底池</span>
+        <span class="hbadge">🔒 开盘后 LP 回流营销钱包</span>
+        <span class="hbadge">🛡️ 开盘即放弃权限</span>
+      </div>
+    </section>
+
+    <!-- 进度 -->
+    <section class="card prog">
+      <div class="prog-head">
+        <h3>铸造进度</h3>
+        <span class="status" id="progStatus">未加载</span>
+      </div>
+      <div class="bar"><i id="progBar"></i></div>
+      <div class="prog-line">
+        <b id="progPct">0%</b>
+        <span id="progOf">— / — 份</span>
+      </div>
+      <ul class="prog-stats">
+        <li><span>已募资</span><b id="progRaised">— BNB</b></li>
+        <li><span>剩余份数</span><b id="progLeft">—</b></li>
+        <li><span>单次价格</span><b id="progPrice">— BNB</b></li>
+        <li><span>状态</span><b id="progState">—</b></li>
+      </ul>
+    </section>
+
+    <!-- 费率明细（来自合约，开盘后锁定） -->
+    <section class="card fee-card hidden" id="feeCard">
+      <h3>🐼 费率明细（读取自合约）</h3>
+      <div class="fee-grid">
+        <div class="fee-col">
+          <h4>买入</h4>
+          <div class="row"><span>持币分红</span><b id="feeBuyHold">-</b></div>
+          <div class="row"><span>回流 LP</span><b id="feeBuyLP">-</b></div>
+          <div class="row"><span>营销</span><b id="feeBuyMarketing">-</b></div>
+          <div class="row"><span>销毁</span><b id="feeBuyBurn">-</b></div>
+          <div class="row total"><span>合计</span><b id="feeBuyTotal">-</b></div>
+        </div>
+        <div class="fee-col">
+          <h4>卖出</h4>
+          <div class="row"><span>持币分红</span><b id="feeSellHold">-</b></div>
+          <div class="row"><span>回流 LP</span><b id="feeSellLP">-</b></div>
+          <div class="row"><span>营销</span><b id="feeSellMarketing">-</b></div>
+          <div class="row"><span>销毁</span><b id="feeSellBurn">-</b></div>
+          <div class="row total"><span>合计</span><b id="feeSellTotal">-</b></div>
+        </div>
+      </div>
+      <p class="hint">费率为合约当前配置，开盘后锁定不可更改。单位：10000 = 100%（如 280 = 2.80%）。</p>
+    </section>
+
+    <!-- 铸造卡片 -->
+    <section class="card mint-card">
+      <h3>🐼 铸造区</h3>
+
+      <label class="field">
+        <span>代币合约地址</span>
+        <input id="contract" type="text" value="0xf71fb53550651221b6f3ca05d5fb6937d6cdb0f0" placeholder="0x... 粘贴已部署的 V4 合约地址" />
+      </label>
+      <button id="loadBtn" class="btn btn-ghost">加载代币信息</button>
+
+      <div id="tokenInfo" class="info hidden">
+        <div class="row"><span>名称</span><b id="infoName">-</b></div>
+        <div class="row"><span>符号</span><b id="infoSymbol">-</b></div>
+        <div class="row"><span>我的余额</span><b id="infoBal">-</b></div>
+        <div class="row"><span>已铸造进度</span><b id="infoProgress">-</b></div>
+        <div class="row"><span>单次价格</span><b id="infoPrice">-</b></div>
+        <div class="row"><span>我的已铸造</span><b id="infoMinted">-</b></div>
+        <div class="row"><span>我还可铸造</span><b id="infoMyLeft">-</b></div>
+        <div class="row"><span>NFT 门槛</span><b id="infoNFT">-</b></div>
+        <div class="row"><span>状态</span><b id="infoStatus">-</b></div>
+      </div>
+
+      <div class="qty-row">
+        <span>铸造份数</span>
+        <div class="stepper">
+          <button id="qtyMinus" type="button">−</button>
+          <input id="mintQty" type="number" min="1" max="10" value="1" />
+          <button id="qtyPlus" type="button">+</button>
+        </div>
+        <span class="qty-hint">单次精确 1 份；多份将逐笔确认</span>
+      </div>
+
+      <button id="mintBtn" class="btn btn-primary btn-lg" disabled>铸造 (发送 BNB)</button>
+      <button id="addTokenBtn" class="btn btn-ghost hidden">＋ 添加到钱包</button>
+      <div id="mintStatus" class="status"></div>
+    </section>
+
+    <!-- 说明 -->
+    <section class="card faq">
+      <h3>说明</h3>
+      <details open>
+        <summary>怎么铸造？</summary>
+        <p>连接币安 AI 钱包后，输入已部署的 V4 合约地址 → 点「加载代币信息」→ 设置份数 → 点「铸造」。每铸造 1 份需向合约发送固定数量的 BNB（单次价格），钱包会逐笔弹出确认。</p>
+      </details>
+      <details>
+        <summary>手机怎么用？</summary>
+        <p>用「币安 App」的 Web3 / DApp 浏览器打开本页面，即可直接连接币安 AI 钱包铸造。或在电脑安装币安钱包 / MetaMask 插件。</p>
+      </details>
+      <details>
+        <summary>铸造后能马上卖吗？</summary>
+        <p>开盘前铸造的代币不可转账；达到铸造目标后合约自动开盘并注入 PancakeSwap，之后才能交易。</p>
+      </details>
+      <details>
+        <summary>安全说明</summary>
+        <p>铸造资金 100% 进入 LP 底池，回流 LP 的 LP 代币与营销费 WBNB 进入营销钱包，开盘后合约放弃 owner 权限。本页不托管私钥、不代发交易，请自行在 BscScan 核验合约。</p>
+      </details>
+    </section>
+
+    <div class="bottom-actions">
+      <a id="bscLink" class="btn btn-ghost btn-lg" href="#" target="_blank" rel="noopener">BscScan 核验</a>
+    </div>
+  </main>
+
+  <footer>🐼 熊猫铸造 · V4 Mint — 本页不托管任何资产，请务必核对合约地址。</footer>
+
+  <div id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script src="contract_v4.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
