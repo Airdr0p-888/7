@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <meta name="agent-wallet-api" content="https://agent-ai-agentic-wallet.onrender.com/api/agent-wallet" />
 </head>
 <body>
   <canvas id="pandaBg"></canvas>
@@ -151,8 +152,23 @@
 
   <div id="toast"></div>
 
+  <!-- 币安 AI 钱包扫码登录弹层 -->
+  <div id="qrModal" class="modal hidden">
+    <div class="modal-box">
+      <h3>连接币安 AI 钱包</h3>
+      <div id="qrBox" class="qr"></div>
+      <p class="hint">配对码：<b id="awPair">——</b></p>
+      <p id="qrMode" class="hint"></p>
+      <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener">打开币安 App</a>
+      <p id="awWait" class="hint"></p>
+      <span id="awBadge" class="badge"></span>
+      <div style="margin-top:14px"><button id="qrCancel" class="btn btn-ghost">取消</button></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
   <script src="contract_v4.js"></script>
+  <script src="vendor/wc.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
