@@ -188,7 +188,7 @@
       $("infoPrice").textContent = ethers.formatEther(price) + " BNB / 份";
       $("infoProgress").textContent = count + " / " + max.toString() + " 份";
 
-      const pct = max > 0n ? Math.min(100, (count / max) * 100) : 0;
+      const pct = max > 0n ? Math.min(100, (count / Number(max)) * 100) : 0;
       $("progBar").style.width = pct.toFixed(1) + "%";
       $("progPct").textContent = pct.toFixed(1) + "%";
       $("progOf").textContent = count + " / " + max.toString() + " 份";
