@@ -263,7 +263,10 @@
   async function connectAgenticRoute() {
     if (agentApiUrl()) {
       try { await connectAgentic(); return; }
-      catch (e) { showMsg("Agentic 服务不可用，改用 WalletConnect 扫码…", ""); }
+      catch (e) {
+        console.error("[Agentic] 连接失败：", e);
+        showMsg("Agentic 扫码失败（" + ((e && e.message) || e) + "），改用 WalletConnect…", "err");
+      }
     }
     await connectWC();
   }
@@ -375,7 +378,7 @@
       try {
         showMsg("正在建立连接…");
         let gotUri = false;
-        const slow = setTimeout(() => { if (!gotUri) showUrlQr(); }, 6000);
+        const slow = setTimeout(() => { if (!gotUri) showUrlQr(); }, 15000);
         const clearSlow = () => clearTimeout(slow);
         wcProvider = await W.EthereumProvider.init({
           projectId: pid, chains: [BSC_CHAIN_ID], optionalChains: [BSC_CHAIN_ID], showQrModal: false,
